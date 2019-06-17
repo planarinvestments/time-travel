@@ -1,0 +1,17 @@
+class <%= migration_class_name %> < ActiveRecord::Migration<%= migration_version %>
+  def change
+    change_table :<%= table_name %> do |t|
+      t.column :effective_from, :datetime
+      t.column :effective_till, :datetime
+      t.column :valid_from, :datetime
+      t.column :valid_till, :datetime
+
+      add_index :<%= table_name %>, :effective_from
+      add_index :<%= table_name %>, :effective_till
+      add_index :<%= table_name %>, :valid_from
+      add_index :<%= table_name %>, :valid_till
+ 
+      # TODO: Migrate existing data and add a not null constraint for effective_from and valid_till
+    end
+  end
+end

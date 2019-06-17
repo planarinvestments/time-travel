@@ -1,0 +1,9 @@
+Description:
+    Adds historical update and correction tracking to models
+
+Example:
+    rails generate time_travel Model
+
+    This will create:
+         a model with fields for tracking history
+         

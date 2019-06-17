@@ -1,0 +1,19 @@
+class <%= migration_class_name %> < ActiveRecord::Migration<%= migration_version %>
+  def change
+    create_table :<%= table_name %> do |t|
+      <% attributes.each do |attribute| -%>
+      t.<%= attribute.type %> :<%= attribute.name %>
+      <% end -%>
+      t.column :effective_from, :datetime, null: false
+      t.column :effective_till, :datetime
+      t.column :valid_from, :datetime, null: false
+      t.column :valid_till, :datetime
+
+    end
+
+    add_index :<%= table_name %>, :effective_from
+    add_index :<%= table_name %>, :effective_till
+    add_index :<%= table_name %>, :valid_from
+    add_index :<%= table_name %>, :valid_till
+  end
+end

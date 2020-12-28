@@ -1,3 +1,3 @@
 module TimeTravel
-  VERSION = '0.1.1'
+  VERSION = '0' # Placwholder version
 end

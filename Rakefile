@@ -25,3 +25,5 @@ Rake::TestTask.new(:test) do |t|
 end
 
 task default: :test
+
+import "./lib/tasks/create_postgres_function.rake"

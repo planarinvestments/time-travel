@@ -9,31 +9,35 @@ To install the gem, reference this git repository in your `Gemfile`
     git "https://<your-personal-access-token>:x-oauth-basic@github.com/planarinv/elder-wand.git" do
       gem 'time_travel'
     end
-    
+
 Then run:
 
     bundle install
-    
-## Usage
+
+## Generators and its usage
+
+Run the following generator to create sql functions used by gem to manage history
+
+    bundle exec rails generate time_travel_sql create
 
 ### Creating a new model that tracks history
 
 To create a new model which will track history, use the `time_travel` generator to create a scaffold
 
     bundle exec rake generate time_travel <NewModel> <fields>
-    
+
 Then, include `TimeTravel` in your ActiveRecord Model, and define which field tracks the entity to which a record belongs to
 
 In the example below. a `CashTransaction` model has a `:cash_account_id` field which uniquely identifies the account for which transactions are tracked.
 
-    class CashTransaction < ActiveRecord::Base 
+    class CashTransaction < ActiveRecord::Base
       include TimeTravel
 
       def self.time_travel_identifier
         :cash_account_id
       end
     end
-    
+
 ### Adding history tracking to an existing model
 
 #### _Adding fields for history tracking_
@@ -41,12 +45,12 @@ In the example below. a `CashTransaction` model has a `:cash_account_id` field w
 To add history tracking to an existing model, you can use the `time_travel` generator, specifying the name of a model that already exists.
 
     bundle exec rake generate time_travel <ExistingModel>
-    
-Note that this creates date fields for history tracking but does not perform the migration of existing data for history tracking. If you need to migrate existing data, you'll need to write scripts for that. 
-    
+
+Note that this creates date fields for history tracking but does not perform the migration of existing data for history tracking. If you need to migrate existing data, you'll need to write scripts for that.
+
 #### _Migrating existing data_
 
-To migrate existing data, you'll need to populate the following fields in each record in your model with a custom script of your own. 
+To migrate existing data, you'll need to populate the following fields in each record in your model with a custom script of your own.
 
 - **effective_from, effective_till** - the data-range for which the data in the record is applicable. If the data in the record is currently applicable, `effective_till` should be set to the constant `INFINITE_DATE`.
 - **valid_from, valid_till** - the date range for which the data in the record was thought to be accurate. For currently valid information, set `valid_till` to the constant `INFINITE_DATE`.
@@ -68,7 +72,7 @@ Note that you cannot pass in `valid_from` and `valid_till` fields because those 
 
 However, you can pass in `effective_from` and `effective_till` dates to indicate the period during which you want to create or update records.
 
-Here are some examples of operations: 
+Here are some examples of operations:
 
     # create account with balance of Rs. 500, effective from now onwards
     balance.create(cash_account_id: 1, amount: 500)
@@ -80,7 +84,7 @@ Here are some examples of operations:
     balance.update!(cash_account_id: 1, amount: 1500, effective_from: Date.parse("20/09/2018").beginning_of_day)
     # correct account balance to Rs. 2000 between 5th and 22nd of August
     balance.update(cash_account_id: 1, amount: 2000,
-              effective_from: Date.parse("05/09/2018").beggining_of_day, 
+              effective_from: Date.parse("05/09/2018").beggining_of_day,
               effective_till: Date.parse("22/09/2018").beggining_of_day)
     # close account now
     balance.delete(cash_account_id: 1)
@@ -98,3 +102,9 @@ Examples follow:
     balance.history(1) # cash_account_id: 1
     balance.history(1, true) # cash_account_id: 1 with corrections
 
+## Rake task
+
+The following rake task has to be invoked before deployment and test case setup, as to create the sql functions
+used by the gem to manage history
+
+    rake time_travel:create_postgres_function

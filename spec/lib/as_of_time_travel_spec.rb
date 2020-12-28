@@ -1,31 +1,18 @@
 require 'rails_helper'
 
 describe TimeTravel do
-  before(:all) do
-    ActiveRecord::Base.establish_connection(adapter: 'sqlite3', database: ':memory:')
-    ActiveRecord::Base.connection.create_table :balances do |t|
-      t.integer :cash_account_id
-      t.integer :amount
-      t.string :currency
-      t.integer :interest
-      t.datetime :effective_from
-      t.datetime :effective_till
-      t.datetime :valid_from
-      t.datetime :valid_till
-    end
-  end
-
-  after(:all) do
-    ActiveRecord::Base.connection.drop_table :balances
-  end
 
   let(:balance_klass) do
     Class.new(ActiveRecord::Base) do
-      self.table_name = 'balances'
+      self.table_name = 'balances_multiple_attrs'
       include TimeTravel
 
       def self.time_travel_identifiers
         [:cash_account_id]
+      end
+
+      def self.batch_size
+        1000
       end
     end
   end
@@ -43,7 +30,7 @@ describe TimeTravel do
   let(:sep_26) { Date.parse('26/09/2018').beginning_of_day }
   let(:sep_28) { Date.parse('28/09/2018').beginning_of_day }
   let(:sep_30) { Date.parse('30/09/2018').beginning_of_day }
-  let(:infinite_date) { Date.parse('01/01/2040').beginning_of_day}
+  let(:infinite_date) { balance_klass::INFINITE_DATE }
 
   let(:cash_account_id) { 1 }
   let(:amount) { 50 }
@@ -73,10 +60,10 @@ describe TimeTravel do
         expect(record).to be_nil
       end
 
-      it "retruns null when inavlid date argument passed " do
-        record = balance_klass.as_of("19/09/2018 00:00:00 +0530", cash_account_id)
-        expect(record).to be_nil
-      end
+      # it "retruns null when inavlid date argument passed " do
+      #   record = balance_klass.as_of("2018/09/19 00:00:00 +0530", cash_account_id)
+      #   expect(record).to be_nil
+      # end
     end
     # working record data: ######################
     #   id cash_account_id balance currency interest effective_from effective_till valid_from valid_till

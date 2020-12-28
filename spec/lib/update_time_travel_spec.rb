@@ -1,21 +1,6 @@
 require 'rails_helper'
 
 describe TimeTravel do
-  before(:all) do
-    ActiveRecord::Base.establish_connection(adapter: 'sqlite3', database: ':memory:')
-    ActiveRecord::Base.connection.create_table :balances do |t|
-      t.integer :cash_account_id
-      t.integer :amount
-      t.datetime :effective_from
-      t.datetime :effective_till
-      t.datetime :valid_from
-      t.datetime :valid_till
-    end
-  end
-
-  after(:all) do
-    ActiveRecord::Base.connection.drop_table :balances
-  end
 
   let(:balance_klass) do
     Class.new(ActiveRecord::Base) do
@@ -24,6 +9,10 @@ describe TimeTravel do
 
       def self.time_travel_identifiers
         [:cash_account_id]
+      end
+
+      def self.batch_size
+        3000
       end
     end
   end
@@ -38,7 +27,7 @@ describe TimeTravel do
   let(:sep_20) { Date.parse('20/09/2018').beginning_of_day }
   let(:sep_21) { Date.parse('21/09/2018').beginning_of_day }
   let(:sep_25) { Date.parse('25/09/2018').beginning_of_day }
-  let(:infinite_date) { Date.parse('01/01/2040').beginning_of_day}
+  let(:infinite_date) { balance_klass::INFINITE_DATE}
 
   let(:cash_account_id) { 1 }
   let(:amount) { 50 }
@@ -83,6 +72,7 @@ describe TimeTravel do
         ).to be_truthy
 
         history = balance_klass.history(cash_account_id)
+
         expect(history.count).to eql(1)
       end
     end
@@ -105,8 +95,10 @@ describe TimeTravel do
     # value:    50    10
     it "with effective_from defaulted to current time and effective_till defaulted to infinity" do
       balance.update!(amount: 10)
+
       expect(balance_klass.count).to eql(4)
       expect(balance_klass.historically_valid.count).to eql(3)
+
 
       history = balance.history()
       expect(history.count).to eql(2)
@@ -174,7 +166,6 @@ describe TimeTravel do
     # value:    10    50
     it "with effective_from set to date before existng history and effective_till set to date after existing history" do
       balance.update!(amount: 10, effective_from: sep_18, effective_till: sep_25)
-
       history = balance_klass.history(cash_account_id)
       expect(history.count).to eql(2)
 
@@ -322,6 +313,7 @@ describe TimeTravel do
       expect(history[2].amount).to eql(50)
     end
 
+
     #  date: 10 -- 20 -- infi
     # value:    10    50
     # ------------update(25,e.f:15Sep, e.t:18Sep)--------------
@@ -436,7 +428,6 @@ describe TimeTravel do
     # value:    25    10    50
     it "with effective_from set to date before history and effective_till splits one of the historical record effective date range" do
       balance.update!(amount: 25, effective_from: sep_2, effective_till: sep_15)
-
       history = balance_klass.history(cash_account_id)
       expect(history.count).to eql(3)
 
@@ -490,6 +481,7 @@ describe TimeTravel do
       #  date: 20 -- 25 : CT -- infi
       # value:    50         10
       it " with no effective_from or effective_till attributes where currentTime is greater than effective history" do
+        current_time = Time.current.utc
         balance_definiteEffective.update!(amount:10)
         expect(balance_klass.count).to eql(3)
         expect(balance_klass.historically_valid.count).to eql(3)
@@ -502,19 +494,20 @@ describe TimeTravel do
         expect(history.first.amount).to eql(50)
 
         expect(history.last.amount).to eql(10)
-        expect(history.last.effective_from.to_time.to_i).to eql(current_time.to_time.to_i)
+        expect(history.last.effective_from.utc).to be_between(current_time-5.seconds, current_time + 5.seconds)
         expect(history.last.effective_till).to eql(infinite_date)
-        expect(history.last.valid_from.to_time.to_i).to eql(current_time.to_time.to_i)
+        expect(history.last.valid_from.utc).to be_between(current_time-5.seconds, current_time + 5.seconds)
         expect(history.last).to be_effective_now
       end
 
       #  date: 20 -- 25
       # value:    50
       # ------------update(10,e.f:15-Sep)--------------
-      #  date: 18 -- infi
+      #  date: 15 -- infi
       # value:    10
       it " with effective_from set to date lesser than effective history" do
         balance_definiteEffective.update!(amount:10, effective_from: sep_15)
+
         expect(balance_klass.count).to eql(3)
         expect(balance_klass.historically_valid.count).to eql(2)
 
@@ -553,13 +546,13 @@ describe TimeTravel do
         expect(history[1].amount).to eql(10)
         expect(history[1].effective_from).to eql(sep_18)
         expect(history[1].effective_till).to eql(sep_21)
-        expect(history[1].valid_from.to_time.to_i).to eql(current_time.to_time.to_i)
+        expect(history[1].valid_from.to_time).to be_between(current_time.to_time - 5.seconds, current_time.to_time + 5.seconds )
         expect(history[1].valid_till).to eql(infinite_date)
 
         expect(history[2].amount).to eql(50)
         expect(history[2].effective_from).to eql(sep_21)
         expect(history[2].effective_till).to eql(sep_25)
-        expect(history[2].valid_from.to_time.to_i).to eql(current_time.to_time.to_i)
+        expect(history[2].valid_from.to_time).to be_between(current_time.to_time - 5.seconds, current_time.to_time + 5.seconds )
         expect(history[2].valid_till).to eql(infinite_date)
       end
     end
@@ -626,6 +619,149 @@ describe TimeTravel do
       expect(history[2].effective_from).to eql(sep_25)
       expect(history[2]).to be_effective_now
       expect(history[2].amount).to eql(50)
+    end
+  end
+
+  describe "update_history" do
+    it 'allows updating multiple records' do
+      update_attrs =  [
+        { amount: 10, effective_from: sep_15, effective_till: sep_19, cash_account_id: cash_account_id },
+        { amount: 51, effective_from: sep_21, cash_account_id: cash_account_id_for_definite_effectiveness },
+        { amount: 21, effective_from: sep_21, cash_account_id: 3 }
+      ]
+
+      balance_klass.update_history(update_attrs)
+      expect(balance_klass.count).to eql(6)
+
+      histories = balance_klass.history(cash_account_id)
+      expect(histories.count).to eql(2)
+      expect(histories.first.amount).to eql(10)
+      expect(histories.first.effective_from).to eql(sep_15)
+      expect(histories.first.effective_till).to eql(sep_19)
+      expect(histories.first.valid_from).to be_present
+
+      expect(histories.last.amount).to eql(50)
+      expect(histories.last.effective_from).to eql(sep_20)
+      expect(histories.last).to be_effective_now
+      expect(histories.last.valid_from).to be_present
+
+      histories = balance_klass.history(cash_account_id_for_definite_effectiveness)
+      expect(histories.count).to eql(2)
+
+      expect(histories.first.amount).to eql(50)
+      expect(histories.first.effective_from).to eql(sep_20)
+      expect(histories.first.effective_till).to eql(sep_21)
+      expect(histories.first.valid_from).to be_present
+
+      expect(histories.last.amount).to eql(51)
+      expect(histories.last.effective_from).to eql(sep_21)
+      expect(histories.last).to be_effective_now
+      expect(histories.last.valid_from).to be_present
+
+      histories = balance_klass.history(3)
+      expect(histories.count).to eql(1)
+      expect(histories.first.amount).to eql(21)
+      expect(histories.first.effective_from).to eql(sep_21)
+      expect(histories.first).to be_effective_now
+      expect(histories.first.valid_from).to be_present
+      expect(histories.first).to be_valid_now
+    end
+
+    it 'raises exception when any time_travel_identfiers is blank' do
+      update_attrs =  [
+        { amount: 10, effective_from: sep_15, effective_till: sep_19, cash_account_id: cash_account_id},
+        { amount: 51, effective_from: sep_21, cash_account_id: cash_account_id_for_definite_effectiveness },
+        { amount: 21, effective_from: sep_21 }
+      ]
+      expect{
+        balance_klass.update_history(update_attrs)
+      }.to raise_error{"Timeline identifiers can't be empty"}
+
+      expect(balance_klass.count).to eql(2)
+    end
+
+    context 'latest_transactions' do
+      it "updates multiple records" do
+        update_attrs =  [
+          { amount: 10, effective_from: sep_21, cash_account_id: cash_account_id},
+          { amount: 51, effective_from: sep_25, cash_account_id: cash_account_id },
+          { amount: 21, effective_from: sep_21, cash_account_id: 3 }
+        ]
+
+        balance_klass.update_history(update_attrs, latest_transactions: true)
+        histories = balance_klass.history(cash_account_id)
+        expect(histories.count).to eql(3)
+
+        expect(histories.first.amount).to eql(50)
+        expect(histories.first.effective_from).to eql(sep_20)
+        expect(histories.first.effective_till).to eql(sep_21)
+        expect(histories.first.valid_from).to be_present
+
+        expect(histories.second.amount).to eql(10)
+        expect(histories.second.effective_from).to eql(sep_21)
+        expect(histories.second.effective_till).to eql(sep_25)
+        expect(histories.second.valid_from).to be_present
+
+        expect(histories.last.amount).to eql(51)
+        expect(histories.last.effective_from).to eql(sep_25)
+        expect(histories.last).to be_effective_now
+        expect(histories.last.valid_from).to be_present
+
+        histories = balance_klass.history(3)
+        expect(histories.count).to eql(1)
+        expect(histories.first.amount).to eql(21)
+        expect(histories.first.effective_from).to eql(sep_21)
+        expect(histories.first).to be_effective_now
+        expect(histories.first.valid_from).to be_present
+        expect(histories.first).to be_valid_now
+      end
+
+      it "raises exception when non latest values given" do
+        update_attrs =  [
+          { amount: 21, effective_from: sep_21, cash_account_id: 3 },
+          { amount: 10, effective_from: sep_19, cash_account_id: cash_account_id},
+          { amount: 51, effective_from: sep_25, cash_account_id: cash_account_id }
+        ]
+        expect{
+          balance_klass.update_history(update_attrs, latest_transactions: true)
+        }.to raise_error(/you cannot update non latest values/)
+
+        histories = balance_klass.history(cash_account_id)
+        expect(histories.count).to eql(0)
+      end
+    end
+
+    xit 'performance testing different accounts' do
+      create_attrs = (1..5_000).map do |i|
+        { amount: 10, effective_from: sep_15, effective_till: sep_19, cash_account_id: i }
+      end.flatten
+
+      update_attrs = (1..5_000).map do |i|
+        { amount: 20, effective_from: sep_18, effective_till: sep_21, cash_account_id: i }
+      end.flatten
+
+      p (Benchmark.measure do
+        balance_klass.update_history(create_attrs)
+      end.inspect)
+
+      p (Benchmark.measure do
+        balance_klass.update_history(update_attrs)
+      end.inspect)
+
+      expect(balance_klass.count).to eql(15004)
+    end
+
+    xit 'performance testing same account' do
+      update_attrs = (1..3000).map do |i|
+        from = sep_15 + i.seconds
+        { amount: i, effective_from: from, cash_account_id: 100 }
+      end.flatten
+
+      p (Benchmark.measure do
+        balance_klass.update_history(update_attrs)
+      end.inspect)
+
+      expect(balance_klass.count).to eql(6001)
     end
   end
 end

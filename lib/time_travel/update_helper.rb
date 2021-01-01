@@ -20,7 +20,7 @@ module UpdateHelper
     affected_timeframes.each_with_index.map{|time, i| {from: time, till: affected_timeframes[i+1]} }[0..-2]
   end
 
-  def construct_corrected_records(record, affected_timeframes, affected_records, update_attrs)
+  def construct_corrected_records(new_record, affected_timeframes, affected_records, attributes)
     affected_timeframes.map do |timeframe|
       matched_record = affected_records.find do |record|
         record.effective_from <= timeframe[:from] && record.effective_till >= timeframe[:till]
@@ -28,11 +28,11 @@ module UpdateHelper
 
       if matched_record
         attrs = matched_record.attributes.except(*ignored_copy_attributes)
-        if timeframe[:from] >= record.effective_from && timeframe[:till] <= record.effective_till
-          attrs.merge!(update_attrs)
+        if timeframe[:from] >= new_record.effective_from && timeframe[:till] <= new_record.effective_till
+          attrs.merge!(attributes)
         end
       else
-        attrs = update_attrs
+        attrs = attributes
       end
 
       attrs.merge!(

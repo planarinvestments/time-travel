@@ -6,9 +6,9 @@ describe TimeTravel do
   let(:balance_klass) do
     Class.new(ActiveRecord::Base) do
       self.table_name = 'balances'
-      include TimeTravel
+      include TimeTravel::TimelineHelper
 
-      def self.time_travel_identifiers
+      def self.timeline_fields
         [:cash_account_id]
       end
 
@@ -612,10 +612,10 @@ describe TimeTravel do
         { amount: 21, effective_from: sep_21, cash_account_id: 3 }
       ]
 
-      balance_klass.update_history(update_attrs)
+      Timeline.bulk_update(balance_klass, update_attrs)
       expect(balance_klass.count).to eql(6)
 
-      histories = balance_klass.history(cash_account_id)
+      histories = balance_klass.timeline(cash_account_id: cash_account_id).effective_history
       expect(histories.count).to eql(2)
       expect(histories.first.amount).to eql(10)
       expect(histories.first.effective_from).to eql(sep_15)
@@ -627,7 +627,7 @@ describe TimeTravel do
       expect(histories.last).to be_effective_now
       expect(histories.last.valid_from).to be_present
 
-      histories = balance_klass.history(cash_account_id_for_definite_effectiveness)
+      histories = balance_klass.timeline(cash_account_id: cash_account_id_for_definite_effectiveness).effective_history
       expect(histories.count).to eql(2)
 
       expect(histories.first.amount).to eql(50)
@@ -640,7 +640,7 @@ describe TimeTravel do
       expect(histories.last).to be_effective_now
       expect(histories.last.valid_from).to be_present
 
-      histories = balance_klass.history(3)
+      histories = balance_klass.timeline(cash_account_id: 3).effective_history
       expect(histories.count).to eql(1)
       expect(histories.first.amount).to eql(21)
       expect(histories.first.effective_from).to eql(sep_21)
@@ -656,7 +656,9 @@ describe TimeTravel do
         { amount: 21, effective_from: sep_21 }
       ]
       expect{
-        balance_klass.update_history(update_attrs)
+        balance_klass.transaction do
+          Timeline.bulk_update(balance_klass, update_attrs)
+        end
       }.to raise_error{"Timeline identifiers can't be empty"}
 
       expect(balance_klass.count).to eql(2)
@@ -670,8 +672,8 @@ describe TimeTravel do
           { amount: 21, effective_from: sep_21, cash_account_id: 3 }
         ]
 
-        balance_klass.update_history(update_attrs, latest_transactions: true)
-        histories = balance_klass.history(cash_account_id)
+        Timeline.bulk_update(balance_klass, update_attrs, latest_transactions: true)
+        histories = balance_klass.timeline(cash_account_id: cash_account_id).effective_history
         expect(histories.count).to eql(3)
 
         expect(histories.first.amount).to eql(50)
@@ -689,7 +691,7 @@ describe TimeTravel do
         expect(histories.last).to be_effective_now
         expect(histories.last.valid_from).to be_present
 
-        histories = balance_klass.history(3)
+        histories = balance_klass.timeline(cash_account_id: 3).effective_history
         expect(histories.count).to eql(1)
         expect(histories.first.amount).to eql(21)
         expect(histories.first.effective_from).to eql(sep_21)
@@ -699,17 +701,19 @@ describe TimeTravel do
       end
 
       it "raises exception when non latest values given" do
-        update_attrs =  [
-          { amount: 21, effective_from: sep_21, cash_account_id: 3 },
-          { amount: 10, effective_from: sep_19, cash_account_id: cash_account_id},
-          { amount: 51, effective_from: sep_25, cash_account_id: cash_account_id }
-        ]
-        expect{
-          balance_klass.update_history(update_attrs, latest_transactions: true)
-        }.to raise_error(/you cannot update non latest values/)
+        if TimeTravel.configuration.update_mode=="sql"
+          update_attrs =  [
+            { amount: 21, effective_from: sep_21, cash_account_id: 3 },
+            { amount: 10, effective_from: sep_19, cash_account_id: cash_account_id},
+            { amount: 51, effective_from: sep_25, cash_account_id: cash_account_id }
+          ]
+          expect{
+            Timeline.bulk_update(balance_klass, update_attrs, latest_transactions: true)
+          }.to raise_error(/you cannot update non latest values/)
 
-        histories = balance_klass.history(cash_account_id)
-        expect(histories.count).to eql(0)
+          histories = balance_klass.timeline(cash_account_id: cash_account_id).effective_history
+          expect(histories.count).to eql(0)
+        end
       end
     end
 

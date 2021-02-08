@@ -1,14 +1,13 @@
 require 'rails_helper'
-require "time_travel/timeline"
 
 describe TimeTravel do
 
   let(:balance_klass) do
     Class.new(ActiveRecord::Base) do
       self.table_name = 'balances'
-      include TimeTravel
+      include TimeTravel::TimelineHelper
 
-      def self.time_travel_identifiers
+      def self.timeline_fields
         [ :cash_account_id ]
       end
 
@@ -27,7 +26,7 @@ describe TimeTravel do
     let(:entry_klass) do
       Class.new(ActiveRecord::Base) do
         self.table_name = 'blocked_entries'
-        include TimeTravel
+        include TimeTravel::TimelineHelper
 
         def self.time_travel_identifiers
           [:wrapper_id, :req_id, :req_type]

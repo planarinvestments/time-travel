@@ -6,7 +6,7 @@ require 'time_travel'
 
 ActiveRecord::Migration.maintain_test_schema!
 def db_connect(db_name)
-  isLocal=false
+  isLocal=true
   db_host="postgres"
   db_username="postgres"
   db_password="postgres"

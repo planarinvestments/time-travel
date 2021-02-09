@@ -1,12 +1,13 @@
 require 'rails_helper'
+require "pp"
 
 describe TimeTravel do
   let(:balance_klass) do
     Class.new(ActiveRecord::Base) do
       self.table_name = 'balances_multiple_attrs'
-      include TimeTravel
+      include TimeTravel::TimelineHelper
 
-      def self.time_travel_identifiers
+      def self.timeline_fields
         [:cash_account_id]
       end
 
@@ -40,10 +41,18 @@ describe TimeTravel do
   let!(:balance_definiteEffective) { balance_klass.create(amount: amount, currency: "US", interest: 1, cash_account_id: cash_account_id_for_definite_effectiveness,
     effective_from: sep_20, effective_till: sep_25)}
 
+  let(:timeline) {
+    balance_klass.timeline(cash_account_id: cash_account_id)
+  }
+
+  let(:terminated_timeline) {
+    balance_klass.timeline(cash_account_id: cash_account_id_for_definite_effectiveness)
+  }
+
   describe "update! multiple attributes 3 historic trails" do
     before do
-      balance.update!(amount: 9, currency: "IN", interest: 3, effective_from: sep_5, effective_till: sep_10)
-      balance.update!(amount: 10, currency: "SG", interest: 2, effective_from: sep_10, effective_till: sep_20)
+      timeline.create_or_update({amount: 9, currency: "IN", interest: 3}, effective_from: sep_5, effective_till: sep_10)
+      timeline.create_or_update({amount: 10, currency: "SG", interest: 2}, effective_from: sep_10, effective_till: sep_20)
     end
 
     context "when one argument passed for update " do
@@ -57,11 +66,11 @@ describe TimeTravel do
       # currency:    IN    SG    US    US
       # interest:     3     2     1     1
       it "with effective_from set to date in future of history" do
-        balance.update!(amount: 25, effective_from: sep_25)
+        timeline.update({amount: 25}, effective_from: sep_25)
         expect(balance_klass.count).to eql(6)
         expect(balance_klass.historically_valid.count).to eql(5)
 
-        history = balance_klass.history(cash_account_id)
+        history = timeline.effective_history
         expect(history.count).to eql(4)
 
         expect(history[0].effective_from).to eql(sep_5)
@@ -110,10 +119,10 @@ describe TimeTravel do
       # currency:    IN    SG    US
       # interest:     3     2     1
       it "with effective_from set to date in middle of history and does not split any existing record" do
-        balance.update!(amount: 25, effective_from: sep_10)
+        timeline.update({amount: 25}, effective_from: sep_10)
+        history = timeline.effective_history
         expect(balance_klass.count).to eql(6)
         expect(balance_klass.historically_valid.count).to eql(4)
-        history = balance_klass.history(cash_account_id)
         expect(history.count).to eql(3)
 
         expect(history[0].effective_from).to eql(sep_5)
@@ -162,10 +171,10 @@ describe TimeTravel do
       # currency:    IN    SG    SG    US
       # interest:     3     2     2     1
       it "with effective_from set to date in middle of history and split any existing record" do
-        balance.update!(amount: 25, effective_from: sep_15)
+        timeline.update({amount: 25}, effective_from: sep_15)
         expect(balance_klass.count).to eql(7)
         expect(balance_klass.historically_valid.count).to eql(5)
-        history = balance_klass.history(cash_account_id)
+        history = timeline.effective_history
         expect(history.count).to eql(4)
 
         expect(history[0].effective_from).to eql(sep_5)
@@ -204,10 +213,10 @@ describe TimeTravel do
       # currency:    nil   IN    SG    US
       # interest:    nil    3     2     1
       it "with effective_from set to date lesser than of history" do
-        balance.update!(amount: 25, effective_from: sep_2)
+        timeline.update({amount: 25}, effective_from: sep_2)
         expect(balance_klass.count).to eql(8)
         expect(balance_klass.historically_valid.count).to eql(5)
-        history = balance_klass.history(cash_account_id)
+        history = timeline.effective_history
         expect(history.count).to eql(4)
 
         expect(history[0].effective_from).to eql(sep_2)
@@ -247,9 +256,9 @@ describe TimeTravel do
       # currency:    IN    SG    SG    US    US
       # interest:     3     2     2     1     1
       it "with effective_from set to date in middle of history and effective till greater than latest effective date" do
-        balance.update!(amount: 25, effective_from: sep_15, effective_till: sep_25)
+        timeline.update({amount: 25}, effective_from: sep_15, effective_till: sep_25)
 
-        history = balance_klass.history(cash_account_id)
+        history = timeline.effective_history
         expect(history.count).to eql(5)
 
         expect(history[0].effective_from).to eql(sep_5)
@@ -293,9 +302,9 @@ describe TimeTravel do
       # currency:    IN    SG    SG    US
       # interest:     3     2     2     1
       it "with effective_from set to date equal one of the existing record and effective till splits record's effective date range" do
-        balance.update!(amount: 25, effective_from: sep_10, effective_till: sep_19)
+        timeline.update({amount: 25}, effective_from: sep_10, effective_till: sep_19)
 
-        history = balance_klass.history(cash_account_id)
+        history = timeline.effective_history
         expect(history.count).to eql(4)
 
         expect(history[0].effective_from).to eql(sep_5)
@@ -333,11 +342,11 @@ describe TimeTravel do
       # currency:    nil   IN    SG    US    US
       # interest:    nil    3     2     1     1
       it "with effective_from set to date less than existing record and effective till splits record's effective date range" do
-        balance.update!(amount: 25, effective_from: sep_2, effective_till: sep_25)
+        timeline.update({amount: 25}, effective_from: sep_2, effective_till: sep_25)
 
         expect(balance_klass.count).to eql(9)
         expect(balance_klass.historically_valid.count).to eql(6)
-        history = balance_klass.history(cash_account_id)
+        history = timeline.effective_history
         expect(history.count).to eql(5)
 
         expect(history[0].effective_from).to eql(sep_2)
@@ -381,13 +390,10 @@ describe TimeTravel do
       # currency:    IN    SG    US
       # interest:     3     2     1
       it "with effective_from and effective_till set to date equal one of the existing record effective date range" do
-        balance.update!(amount: 25, effective_from: sep_10, effective_till: sep_20)
-
-        history = balance_klass.history(cash_account_id)
-
+        timeline.update({amount: 25}, effective_from: sep_10, effective_till: sep_20)
         expect(balance_klass.count).to eql(5)
         expect(balance_klass.historically_valid.count).to eql(4)
-        history = balance_klass.history(cash_account_id)
+        history = timeline.effective_history
         expect(history.count).to eql(3)
 
         expect(history[0].effective_from).to eql(sep_5)
@@ -431,10 +437,10 @@ describe TimeTravel do
       # currency:    IN    US    US
       # interest:     3     2     1
       it "with effective_from set to date in middle of history and does not split any existing record" do
-        balance.update!(amount: 25, effective_from: sep_10, currency: "US")
+        timeline.update({amount: 25, currency: "US"}, effective_from: sep_10)
         expect(balance_klass.count).to eql(6)
         expect(balance_klass.historically_valid.count).to eql(4)
-        history = balance_klass.history(cash_account_id)
+        history = timeline.effective_history
         expect(history.count).to eql(3)
 
         expect(history[0].effective_from).to eql(sep_5)
@@ -468,11 +474,11 @@ describe TimeTravel do
       # interest:     3     2     2     1
 
       it "with effective_from set to date in middle of history and split any existing record" do
-        balance_klass.update_history([amount: 25, effective_from: sep_15, currency: "US", cash_account_id: 1])
+        Timeline.bulk_update(balance_klass, [amount: 25, effective_from: sep_15, currency: "US", cash_account_id: 1])
         expect(balance_klass.count).to eql(7)
 
         expect(balance_klass.historically_valid.count).to eql(5)
-        history = balance_klass.history(cash_account_id)
+        history = timeline.effective_history
         expect(history.count).to eql(4)
 
         expect(history[0].effective_from).to eql(sep_5)
@@ -511,10 +517,10 @@ describe TimeTravel do
       # currency:    US    US    US    US
       # interest:    nil    3     2     1
       it "with effective_from set to date lesser than of history" do
-        balance.update!(amount: 25, effective_from: sep_2, currency: "US")
+        timeline.update({amount: 25, currency: "US"}, effective_from: sep_2)
         expect(balance_klass.count).to eql(8)
         expect(balance_klass.historically_valid.count).to eql(5)
-        history = balance_klass.history(cash_account_id)
+        history = timeline.effective_history
         expect(history.count).to eql(4)
 
         expect(history[0].effective_from).to eql(sep_2)
@@ -554,9 +560,9 @@ describe TimeTravel do
       # currency:    IN    SG    IN    IN    US
       # interest:     3     2     2     1     1
       it "with effective_from set to date in middle of history and effective till greater than latest effective date" do
-        balance.update!(amount: 25, effective_from: sep_15, effective_till: sep_25, currency: "IN")
+        timeline.update({amount: 25, currency: "IN"}, effective_from: sep_15, effective_till: sep_25)
 
-        history = balance_klass.history(cash_account_id)
+        history = timeline.effective_history
         expect(history.count).to eql(5)
 
         expect(history[0].effective_from).to eql(sep_5)
@@ -601,11 +607,11 @@ describe TimeTravel do
       # interest:    nil    3     2     1     1
 
       it "with effective_from set to date less than existing record and effective till splits record's effective date range" do
-        balance.update!(amount: 25, effective_from: sep_2, effective_till: sep_25, currency: "US")
+        timeline.update({amount: 25, currency: "US"}, effective_from: sep_2, effective_till: sep_25)
 
         expect(balance_klass.count).to eql(9)
         expect(balance_klass.historically_valid.count).to eql(6)
-        history = balance_klass.history(cash_account_id)
+        history = timeline.effective_history
         expect(history.count).to eql(5)
 
         expect(history[0].effective_from).to eql(sep_2)
@@ -651,10 +657,10 @@ describe TimeTravel do
       # currency:    IN    US
       # interest:     3    2.5
       it "with effective_from set to date in middle of history and does not split any existing record " do
-        balance.update!(amount: 25, effective_from: sep_10, currency: "US", interest: 3)
+        timeline.update({amount: 25, currency: "US", interest: 3}, effective_from: sep_10)
         expect(balance_klass.count).to eql(5)
         expect(balance_klass.historically_valid.count).to eql(3)
-        history = balance_klass.history(cash_account_id)
+        history = timeline.effective_history
         expect(history.count).to eql(2)
 
         expect(history[0].effective_from).to eql(sep_5)
@@ -681,10 +687,10 @@ describe TimeTravel do
       # currency:    IN    SG    US
       # interest:     3     2     3
       it "with effective_from set to date in middle of history and split any existing record" do
-        balance.update!(amount: 25, effective_from: sep_15, currency: "US", interest: 3)
+        timeline.update({amount: 25, currency: "US", interest: 3}, effective_from: sep_15)
         expect(balance_klass.count).to eql(6)
         expect(balance_klass.historically_valid.count).to eql(4)
-        history = balance_klass.history(cash_account_id)
+        history = timeline.effective_history
         expect(history.count).to eql(3)
 
         expect(history[0].effective_from).to eql(sep_5)
@@ -718,10 +724,10 @@ describe TimeTravel do
       # interest:    2
 
       it "with effective_from set to date lesser than that of exiting history" do
-        balance.update!(amount: 25, effective_from: sep_2, currency: "US", interest: 2)
+        timeline.update({amount: 25, currency: "US", interest: 2}, effective_from: sep_2)
         expect(balance_klass.count).to eql(5)
         expect(balance_klass.historically_valid.count).to eql(2)
-        history = balance_klass.history(cash_account_id)
+        history = timeline.effective_history
         expect(history.count).to eql(1)
 
         expect(history[0].effective_from).to eql(sep_2)
@@ -742,9 +748,9 @@ describe TimeTravel do
       # currency:    IN    SG    IN    US
       # interest:     3     2     3     1
       it "with effective_from set to date in middle of history and effective till greater than latest effective date" do
-        balance.update!(amount: 25, effective_from: sep_15, effective_till: sep_25, currency: "IN", interest: 3)
+        timeline.update({amount: 25,  currency: "IN", interest: 3}, effective_from: sep_15, effective_till: sep_25)
 
-        history = balance_klass.history(cash_account_id)
+        history = timeline.effective_history
         expect(history.count).to eql(4)
 
         expect(history[0].effective_from).to eql(sep_5)
@@ -783,11 +789,11 @@ describe TimeTravel do
       # interest:    2      1
 
       it "with effective_from set to date less than existing record and effective till splits record's effective date range" do
-        balance.update!(amount: 25, effective_from: sep_2, effective_till: sep_25, currency: "US", interest: 2)
+        timeline.update({amount: 25,  currency: "US", interest: 2}, effective_from: sep_2, effective_till: sep_25)
 
         expect(balance_klass.count).to eql(6)
         expect(balance_klass.historically_valid.count).to eql(3)
-        history = balance_klass.history(cash_account_id)
+        history = timeline.effective_history
         expect(history.count).to eql(2)
 
         expect(history[0].effective_from).to eql(sep_2)
@@ -813,14 +819,13 @@ describe TimeTravel do
       # currency:    IN    US    US
       # interest:     3     1     1
       it "with effective_from and effective_till set to date equal one of the existing record effective date range and all atrributes equal to that of next date range and records not squezed" do
-        balance.update!(amount: 50, effective_from: sep_10, effective_till: sep_20, currency: "US", interest: 1)
+        timeline.update({amount: 50, currency: "US", interest: 1}, effective_from: sep_10, effective_till: sep_20)
 
-        history = balance_klass.history(cash_account_id)
 
         expect(balance_klass.count).to eql(5)
         expect(balance_klass.historically_valid.count).to eql(4)
 
-        history = balance_klass.history(cash_account_id)
+        history = timeline.effective_history
         expect(history.count).to eql(3)
         expect(history[0].effective_from).to eql(sep_5)
         expect(history[0].effective_till).to eql(sep_10)
@@ -855,8 +860,8 @@ describe TimeTravel do
 
   describe "update! multiple attributes on definite effective historic data" do
     before do
-      balance_definiteEffective.update!(amount: 9, currency: "IN",interest: 3, effective_from: sep_5, effective_till: sep_10)
-      balance_definiteEffective.update!(amount: 10, currency: "SG",interest: 2, effective_from: sep_10, effective_till: sep_20)
+      terminated_timeline.update({amount: 9, currency: "IN",interest: 3}, effective_from: sep_5, effective_till: sep_10)
+      terminated_timeline.update({amount: 10, currency: "SG",interest: 2}, effective_from: sep_10, effective_till: sep_20)
     end
     context "when only one argument passed for update" do
       #     date: 05 -- 10 -- 20 -- 25
@@ -868,11 +873,11 @@ describe TimeTravel do
       #    value:    09    10    50    25    25
       # currency:    IN    SG    US    US    nil
       # interest:     3     2     1     1    nil
-      it "with effective_from date given to split existing history and will make data infinite effective  " do
-        balance_definiteEffective.update!(amount: 25, effective_from: sep_23)
+      it "with effective_from date given to split existing history and will make data infinite effective  " do 
+        terminated_timeline.update({amount: 25}, effective_from: sep_23)
         expect(balance_klass.count).to eql(7)
         expect(balance_klass.historically_valid.count).to eql(6)
-        history = balance_klass.history(cash_account_id_for_definite_effectiveness)
+        history = terminated_timeline.effective_history
         expect(history.count).to eql(5)
 
         expect(history[0].effective_from).to eql(sep_5)
@@ -917,10 +922,10 @@ describe TimeTravel do
       # currency:    IN    SG    US       nil
       # interest:     3     2     1       nil
       it "with effective_from and effective till in future date range" do
-        balance_definiteEffective.update!(amount: 25, effective_from: sep_28, effective_till: sep_30)
+        terminated_timeline.update({amount: 25}, effective_from: sep_28, effective_till: sep_30)
         expect(balance_klass.count).to eql(5)
         expect(balance_klass.historically_valid.count).to eql(5)
-        history = balance_klass.history(cash_account_id_for_definite_effectiveness)
+        history = terminated_timeline.effective_history
         expect(history.count).to eql(4)
 
         expect(history[0].effective_from).to eql(sep_5)
@@ -959,10 +964,10 @@ describe TimeTravel do
       # currency:    IN    SG    SG    US    US
       # interest:     3     2     2    1     1
       it "with effective_from set to date splitting one of the records' date range and effective_till set to date that splits another record date range" do
-        balance_definiteEffective.update!(amount: 25, effective_from: sep_19, effective_till: sep_23)
+        terminated_timeline.update({amount: 25}, effective_from: sep_19, effective_till: sep_23)
         expect(balance_klass.count).to eql(8)
         expect(balance_klass.historically_valid.count).to eql(6)
-        history = balance_klass.history(cash_account_id_for_definite_effectiveness)
+        history = terminated_timeline.effective_history
         expect(history.count).to eql(5)
 
         expect(history[0].effective_from).to eql(sep_5)
@@ -1010,10 +1015,10 @@ describe TimeTravel do
       # currency:    IN    SG    US    IN    IN
       # interest:     3     2     1     1    nil
       it "with effective_from date given to split existing history will make data infinite effective  " do
-        balance_definiteEffective.update!(amount: 25, effective_from: sep_23, currency: "IN")
+        terminated_timeline.update({amount: 25, currency: "IN"}, effective_from: sep_23)
         expect(balance_klass.count).to eql(7)
         expect(balance_klass.historically_valid.count).to eql(6)
-        history = balance_klass.history(cash_account_id_for_definite_effectiveness)
+        history = terminated_timeline.effective_history
         expect(history.count).to eql(5)
 
         expect(history[0].effective_from).to eql(sep_5)
@@ -1062,10 +1067,10 @@ describe TimeTravel do
       # interest:     3     2     1     3
       it "with effective_from date given to split existing history will make data infinite effective  " do
 
-        balance_definiteEffective.update!(amount: 25, effective_from: sep_23,currency: "IN", interest: "3")
+        terminated_timeline.update({amount: 25, currency: "IN", interest: "3"}, effective_from: sep_23)
         expect(balance_klass.count).to eql(6)
         expect(balance_klass.historically_valid.count).to eql(5)
-        history = balance_klass.history(cash_account_id_for_definite_effectiveness)
+        history = terminated_timeline.effective_history
         expect(history.count).to eql(4)
 
         expect(history[0].effective_from).to eql(sep_5)
@@ -1104,10 +1109,10 @@ describe TimeTravel do
       # currency:    IN    SG    US       nil
       # interest:     3     2     1       nil
       it "with effective_from and effective till in future date range" do
-        balance_definiteEffective.update!(amount: 25, effective_from: sep_28, effective_till: sep_30, currency: "IN", interest: 3 )
+        terminated_timeline.update({amount: 25, currency: "IN", interest: 3}, effective_from: sep_28, effective_till: sep_30)
         expect(balance_klass.count).to eql(5)
         expect(balance_klass.historically_valid.count).to eql(5)
-        history = balance_klass.history(cash_account_id_for_definite_effectiveness)
+        history = terminated_timeline.effective_history
         expect(history.count).to eql(4)
 
         expect(history[0].effective_from).to eql(sep_5)
@@ -1140,8 +1145,8 @@ describe TimeTravel do
 
   describe "update! pre historic trails" do
     before do
-      balance.update!(amount: 10, currency: "SG", effective_from: sep_10, effective_till: sep_20)
-      balance.update!(amount: 9, currency: "IN", effective_from: sep_5, effective_till: sep_10)
+      timeline.update({amount: 10, currency: "SG"}, effective_from: sep_10, effective_till: sep_20)
+      timeline.update({amount: 9, currency: "IN"}, effective_from: sep_5, effective_till: sep_10)
     end
 
     #     date: 05 -- 10 -- 20 -- infi
@@ -1152,9 +1157,9 @@ describe TimeTravel do
     #    value:    07    09    10    50
     # currency:    US    IN    SG    US
     it "with effective_from set to date before history and effective till to start of history" do
-      balance.update!(amount: 7, currency: "US", effective_from: sep_2, effective_till: sep_5)
+      timeline.update({amount: 7, currency: "US"}, effective_from: sep_2, effective_till: sep_5)
 
-      history = balance_klass.history(cash_account_id)
+      history = timeline.effective_history
       expect(history.count).to eql(4)
 
       expect(history[0].effective_from).to eql(sep_2)
@@ -1186,9 +1191,9 @@ describe TimeTravel do
     #    value:    07    09    10    50
     # currency:    --    IN    SG    US
     it "with effective_from set to date before history and effective till to start of history" do
-      balance.update!(amount: 7, effective_from: sep_2, effective_till: sep_5)
+      timeline.update({amount: 7}, effective_from: sep_2, effective_till: sep_5)
 
-      history = balance_klass.history(cash_account_id)
+      history = timeline.effective_history
       expect(history.count).to eql(4)
 
       expect(history[0].effective_from).to eql(sep_2)
@@ -1200,8 +1205,8 @@ describe TimeTravel do
 
   describe "update! post historic trails" do
     before do
-      balance.update!(amount: 10, currency: "SG", effective_from: sep_10, effective_till: sep_20)
-      balance.update!(amount: 9, currency: "IN", effective_from: sep_5, effective_till: sep_10)
+      timeline.update({amount: 10, currency: "SG"}, effective_from: sep_10, effective_till: sep_20)
+      timeline.update({amount: 9, currency: "IN"}, effective_from: sep_5, effective_till: sep_10)
     end
 
     #     date: 05 -- 10 -- 20 -- infi
@@ -1212,9 +1217,9 @@ describe TimeTravel do
     #    value:    09    10    50    60
     # currency:    IN    SG    US    US
     it "with effective_from set to post histoy date" do
-      balance.update!(amount: 60, effective_from: sep_25)
+      timeline.update({amount: 60}, effective_from: sep_25)
 
-      history = balance_klass.history(cash_account_id)
+      history = timeline.effective_history
       expect(history.count).to eql(4)
 
       expect(history[0].effective_from).to eql(sep_5)

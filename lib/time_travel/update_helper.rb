@@ -32,7 +32,7 @@ module UpdateHelper
           attrs.merge!(attributes)
         end
       else
-        attrs = attributes
+        attrs = new_record.attributes.except(*ignored_copy_attributes)
       end
 
       attrs.merge!(

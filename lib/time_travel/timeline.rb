@@ -26,10 +26,10 @@ class Timeline
     record=@model_class.new
     effective_attributes=attributes
     effective_record=self.effective_at(effective_from)
-    if not effective_record.nil?
-      effective_attributes=effective_record.attributes.except(*ignored_copy_attributes)
-      effective_attributes.merge(attributes)
-    end
+    # if not effective_record.nil?
+    #  effective_attributes=effective_record.attributes.except(*ignored_copy_attributes)
+    #  effective_attributes.merge(attributes)
+    # end
     record.attributes=effective_attributes
     @timeline_identifiers.each do |attribute,value|
       record[attribute]=value
@@ -94,7 +94,7 @@ class Timeline
     record=construct_record(
       attributes, current_time: current_time, effective_from: effective_from, effective_till: effective_till)
     raise ActiveRecord::RecordInvalid.new(record) unless record.validate_update(attributes)
-    update_attributes=record.attributes.except(*ignored_copy_attributes)
+    update_attributes=attributes.except(*ignored_update_attributes)
     if UPDATE_MODE=="native"
       update_native(
         record, update_attributes, 
@@ -189,6 +189,10 @@ class Timeline
     else
       raise "no effective record found on timeline"
     end
+  end
+
+  def ignored_update_attributes
+    ["id", "created_at", "updated_at", "effective_from", "effective_till", "valid_from", "valid_till"]
   end
 
   def ignored_copy_attributes

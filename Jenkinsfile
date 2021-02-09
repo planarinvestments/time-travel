@@ -10,7 +10,8 @@ pipeline {
     }
     stage('test') {
       steps {
-        sh 'bundle exec rspec'
+        sh 'TIME_TRAVEL_UPDATE_MODE=native bundle exec rspec'
+        sh 'TIME_TRAVEL_UPDATE_MODE=sql bundle exec rspec'
       }
     }
   }

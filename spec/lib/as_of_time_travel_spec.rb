@@ -30,7 +30,7 @@ describe TimeTravel do
   let(:sep_26) { Date.parse('26/09/2018').beginning_of_day }
   let(:sep_28) { Date.parse('28/09/2018').beginning_of_day }
   let(:sep_30) { Date.parse('30/09/2018').beginning_of_day }
-  let(:infinite_date) { balance_klass::INFINITE_DATE }
+  let(:infinite_date) { TimeTravel::INFINITE_DATE }
 
   let(:cash_account_id) { 1 }
   let(:amount) { 50 }

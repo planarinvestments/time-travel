@@ -1,5 +1,6 @@
 require "time_travel/sql_function_helper"
 require "time_travel/update_helper"
+require "pp"
 
 class Timeline
   include UpdateHelper
@@ -26,11 +27,7 @@ class Timeline
     record=@model_class.new
     effective_attributes=attributes
     effective_record=self.effective_at(effective_from)
-    # if not effective_record.nil?
-    #  effective_attributes=effective_record.attributes.except(*ignored_copy_attributes)
-    #  effective_attributes.merge(attributes)
-    # end
-    record.attributes=effective_attributes
+    record.attributes=attributes
     @timeline_identifiers.each do |attribute,value|
       record[attribute]=value
     end
@@ -87,20 +84,22 @@ class Timeline
   end
 
   def update(attributes, current_time: Time.current, effective_from: nil, effective_till: nil)
-    return true if attributes.symbolize_keys!.empty?
+    attributes.symbolize_keys!
+    return true if attributes.empty?
     if not self.has_history?
       raise "timeline not found"
     end
     record=construct_record(
       attributes, current_time: current_time, effective_from: effective_from, effective_till: effective_till)
     raise ActiveRecord::RecordInvalid.new(record) unless record.validate_update(attributes)
-    update_attributes=attributes.except(*ignored_update_attributes)
+    update_attributes=record.attributes.except(*ignored_copy_attributes).symbolize_keys!.slice(*attributes.keys)
     if UPDATE_MODE=="native"
       update_native(
         record, update_attributes, 
         current_time: current_time, effective_from: effective_from, effective_till: effective_till
       )
     else
+      update_attributes.merge!(@timeline_identifiers).merge!({effective_from: effective_from, effective_till: effective_till})
       self.class.update_sql(@model_class, [update_attributes], current_time: current_time)
     end
   end
@@ -119,7 +118,6 @@ class Timeline
         insert_record=record.merge(
           current_time: current_time
         )
-        # pp insert_record
         @model_class.create!(insert_record)
       end
 

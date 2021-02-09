@@ -196,7 +196,7 @@ describe TimeTravel do
     it 'returns records only effective_now' do
       balance = balance_klass.create(amount: amount, cash_account_id: cash_account_id,
                  effective_from: effective_from, effective_till: effective_till)
-      balance.update!(amount: 121, effective_from: effective_till,effective_till: balance_klass::INFINITE_DATE)
+      balance.update!(amount: 121, effective_from: effective_till,effective_till: TimeTravel::INFINITE_DATE)
       expect(balance_klass.effective_now.count).to eql(1)
       expect(balance_klass.effective_now.first.amount).to eql(121)
     end

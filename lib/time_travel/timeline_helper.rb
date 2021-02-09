@@ -7,9 +7,6 @@ require "time_travel/configuration"
 module TimeTravel::TimelineHelper
   extend ActiveSupport::Concern
 
-  INFINITE_DATE = Time.find_zone('UTC').local(3000,1,1)
-  PRECISE_TIME_FORMAT = "%Y-%m-%d %H:%M:%S.%6N"
-
   included do
     attr_accessor :current_time
     before_validation :set_current_time
@@ -20,8 +17,8 @@ module TimeTravel::TimelineHelper
     validate :effective_range_timeline
     validate :absence_of_valid_from_till, on: :create
 
-    scope :historically_valid, -> { where(valid_till: INFINITE_DATE) }
-    scope :effective_now, -> { where(effective_till: INFINITE_DATE, valid_till: INFINITE_DATE) }
+    scope :historically_valid, -> { where(valid_till: TimeTravel::INFINITE_DATE) }
+    scope :effective_now, -> { where(effective_till: TimeTravel::INFINITE_DATE, valid_till: TimeTravel::INFINITE_DATE) }
   end
 
 
@@ -51,12 +48,12 @@ module TimeTravel::TimelineHelper
 
   def set_effective_defaults
     self.effective_from ||= current_time
-    self.effective_till ||= INFINITE_DATE
+    self.effective_till ||= TimeTravel::INFINITE_DATE
   end
 
   def set_validity_defaults
     self.valid_from ||= current_time
-    self.valid_till ||= INFINITE_DATE
+    self.valid_till ||= TimeTravel::INFINITE_DATE
   end
 
   def has_history
@@ -94,7 +91,7 @@ module TimeTravel::TimelineHelper
   end
 
   def valid_now?
-    self.valid_from.present? and self.valid_till==INFINITE_DATE
+    self.valid_from.present? and self.valid_till==TimeTravel::INFINITE_DATE
   end
 
   def ineffective_now?
@@ -102,7 +99,7 @@ module TimeTravel::TimelineHelper
   end
 
   def effective_now?
-    self.effective_from.present? and self.effective_till==INFINITE_DATE
+    self.effective_from.present? and self.effective_till==TimeTravel::INFINITE_DATE
   end
 end
 

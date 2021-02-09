@@ -29,7 +29,7 @@ describe TimeTravel do
   let(:sep_25) { Date.parse('25/09/2018').beginning_of_day }
   let(:sep_28) { Date.parse('28/09/2018').beginning_of_day }
   let(:sep_30) { Date.parse('30/09/2018').beginning_of_day }
-  let(:infinite_date) { balance_klass::INFINITE_DATE }
+  let(:infinite_date) { TimeTravel::INFINITE_DATE }
 
   let(:cash_account_id) { 1 }
   let(:amount) { 50 }
@@ -1066,7 +1066,6 @@ describe TimeTravel do
       # currency:    IN    SG    US    IN
       # interest:     3     2     1     3
       it "with effective_from date given to split existing history will make data infinite effective  " do
-
         terminated_timeline.update({amount: 25, currency: "IN", interest: "3"}, effective_from: sep_23)
         expect(balance_klass.count).to eql(6)
         expect(balance_klass.historically_valid.count).to eql(5)

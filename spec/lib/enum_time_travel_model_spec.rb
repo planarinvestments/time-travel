@@ -30,7 +30,7 @@ describe TimeTravel do
 
   describe 'create' do
     it "creates new record with timestamps set" do
-      new_obj = timeline.create(amount: amount, status: 'stale', effective_from: effective_from)
+      new_obj = timeline.create({amount: amount, status: 'stale'}, effective_from: effective_from)
       expect(new_obj).to be_persisted
       expect(new_obj.wrapper_id).to eql(wrapper_id)
       expect(new_obj).to be_stale
@@ -45,8 +45,8 @@ describe TimeTravel do
   describe 'update' do
     it "updates record with enum values" do
       new_effective_from = effective_from + 2.days
-      timeline.create(amount: amount, status: 'stale', effective_from: effective_from)
-      timeline.update(status: 'fresh', amount: 200, effective_from: new_effective_from)
+      timeline.create({amount: amount, status: 'stale'}, effective_from: effective_from)
+      timeline.update({status: 'fresh', amount: 200}, effective_from: new_effective_from)
       new_obj=timeline.effective_at(new_effective_from)
 
       expect(new_obj).to be_persisted

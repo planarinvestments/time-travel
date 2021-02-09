@@ -4,7 +4,7 @@ require "time_travel/sql_function_helper"
 require "time_travel/configuration"
 
 module TimeTravel
-  INFINITE_DATE = Time.find_zone('UTC').local(3000,1,1)
+  INFINITE_DATE = Time.new(3000,1,1,0,0,0,"+00:00")
   PRECISE_TIME_FORMAT = "%Y-%m-%d %H:%M:%S.%6N"
 
   class << self

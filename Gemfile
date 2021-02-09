@@ -1,4 +1,4 @@
-source 'https://rubygems.org'
+source "https://internal-gemserver.weinvest.net/repository/wi_group_repository/"
 # git_source(:github) { |repo| "https://github.com/#{repo}.git" }
 
 # Declare your gem's dependencies in time_travel.gemspec.

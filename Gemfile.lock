@@ -4,7 +4,7 @@ PATH
     time_travel (0)
 
 GEM
-  remote: https://rubygems.org/
+  remote: https://internal-gemserver.weinvest.net/repository/wi_group_repository/
   specs:
     actioncable (5.2.1)
       actionpack (= 5.2.1)

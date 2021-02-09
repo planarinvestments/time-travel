@@ -25,8 +25,6 @@ class Timeline
 
   def construct_record(attributes,current_time:,effective_from:,effective_till:)
     record=@model_class.new
-    effective_attributes=attributes
-    effective_record=self.effective_at(effective_from)
     record.attributes=attributes
     @timeline_identifiers.each do |attribute,value|
       record[attribute]=value
@@ -85,6 +83,7 @@ class Timeline
 
   def update(attributes, current_time: Time.current, effective_from: nil, effective_till: nil)
     attributes.symbolize_keys!
+    attributes=attributes.except(*ignored_update_attributes)
     return true if attributes.empty?
     if not self.has_history?
       raise "timeline not found"
@@ -92,14 +91,16 @@ class Timeline
     record=construct_record(
       attributes, current_time: current_time, effective_from: effective_from, effective_till: effective_till)
     raise ActiveRecord::RecordInvalid.new(record) unless record.validate_update(attributes)
-    update_attributes=record.attributes.except(*ignored_copy_attributes).symbolize_keys!.slice(*attributes.keys)
+    record_attributes=record.attributes.except(*ignored_copy_attributes).symbolize_keys!
+    update_attributes=record_attributes.slice(*attributes.keys)
     if UPDATE_MODE=="native"
       update_native(
         record, update_attributes, 
         current_time: current_time, effective_from: effective_from, effective_till: effective_till
       )
     else
-      update_attributes.merge!(@timeline_identifiers).merge!({effective_from: effective_from, effective_till: effective_till})
+      update_attributes.merge!(@timeline_identifiers)
+      update_attributes.merge!({effective_from: effective_from, effective_till: effective_till})
       self.class.update_sql(@model_class, [update_attributes], current_time: current_time)
     end
   end

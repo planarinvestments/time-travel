@@ -5,9 +5,9 @@ describe TimeTravel do
   let(:balance_klass) do
     Class.new(ActiveRecord::Base) do
       self.table_name = 'balances_multiple_attrs'
-      include TimeTravel
+      include TimeTravel::TimelineHelper
 
-      def self.time_travel_identifiers
+      def self.timeline_fields
         [:cash_account_id]
       end
 
@@ -37,6 +37,18 @@ describe TimeTravel do
   let(:current_time) {Time.current}
   let(:cash_account_id_for_definite_effectiveness) { 2 }
 
+  let(:timeline) {
+    balance_klass.timeline(cash_account_id: cash_account_id)
+  }
+
+  let(:terminated_timeline) {
+    balance_klass.timeline(cash_account_id: cash_account_id_for_definite_effectiveness)
+  }
+
+  let(:timeline3) {
+    balance_klass.timeline(cash_account_id: 3)
+  }
+
   let!(:balance) { balance_klass.create(amount: amount, currency: "US", interest: 1, cash_account_id: cash_account_id,
     effective_from: sep_20)}
   let!(:balance_definiteEffective) { balance_klass.create(amount: amount, currency: "US" , interest: 1, cash_account_id: cash_account_id_for_definite_effectiveness,
@@ -44,19 +56,19 @@ describe TimeTravel do
 
   describe "AsOf to fetch records" do
     before do
-      balance.update!(amount: 9, currency: "IN",interest: 3, effective_from: sep_5, effective_till: sep_10)
-      balance.update!(amount: 10, currency: "SG",interest: 2, effective_from: sep_10, effective_till: sep_20)
-      balance.update!(amount: 15, currency: "IN", interest: 3, effective_from: sep_21, effective_till: sep_25)
-      balance_definiteEffective.update!(amount: 25, currency: "IN", interest:3, effective_from: sep_28, effective_till:sep_30)
+      timeline.update({amount: 9, currency: "IN",interest: 3}, effective_from: sep_5, effective_till: sep_10)
+      timeline.update({amount: 10, currency: "SG",interest: 2}, effective_from: sep_10, effective_till: sep_20)
+      timeline.update({amount: 15, currency: "IN", interest: 3}, effective_from: sep_21, effective_till: sep_25)
+      terminated_timeline.update({amount: 25, currency: "IN", interest:3}, effective_from: sep_28, effective_till:sep_30)
     end
     context " validations " do
       it "returns record when valid identifier being passed " do
-        record = balance_klass.as_of(sep_19, cash_account_id)
+        record = timeline.effective_at(sep_19)
         expect(record).to be_present
       end
 
       it "returns null when identifier being passed does not have history " do
-        record = balance_klass.as_of(sep_19, 3)
+        record = timeline3.effective_at(sep_19)
         expect(record).to be_nil
       end
 
@@ -78,7 +90,7 @@ describe TimeTravel do
 
     context " when searched for record data within the history " do
       it " with date inbetween definite effective record" do
-        record = balance_klass.as_of(sep_19, cash_account_id)
+        record = timeline.effective_at(sep_19)
         expect(record.cash_account_id).to eql(cash_account_id)
         expect(record.effective_from).to eql(sep_10)
         expect(record.effective_till).to eql(sep_20)
@@ -88,7 +100,7 @@ describe TimeTravel do
       end
 
       it "with date equal to inbound effective range" do
-        record = balance_klass.as_of(sep_10, cash_account_id)
+        record = timeline.effective_at(sep_10)
 
         expect(record.cash_account_id).to eql(cash_account_id)
         expect(record.effective_from).to eql(sep_10)
@@ -99,7 +111,7 @@ describe TimeTravel do
       end
 
       it "with date equal to outbound effective range" do
-        record = balance_klass.as_of(sep_19.end_of_day, cash_account_id)
+        record = timeline.effective_at(sep_19.end_of_day)
 
         expect(record.cash_account_id).to eql(cash_account_id)
         expect(record.effective_from).to eql(sep_10)
@@ -110,7 +122,7 @@ describe TimeTravel do
       end
 
       it " with date is in future of an infinite effective record" do
-        record = balance_klass.as_of(sep_28, cash_account_id)
+        record = timeline.effective_at(sep_28)
 
         expect(record.cash_account_id).to eql(cash_account_id)
         expect(record.effective_from).to eql(sep_25)
@@ -123,12 +135,12 @@ describe TimeTravel do
 
     context " when searched for record data outside the history " do
       it " with date lesser than definite effective record" do
-        record = balance_klass.as_of(sep_2, cash_account_id)
+        record = timeline.effective_at(sep_2)
         expect(record).to be_nil
       end
 
       it " with date time gap of definite effective records" do
-        record = balance_klass.as_of(sep_26, cash_account_id_for_definite_effectiveness)
+        record = terminated_timeline.effective_at(sep_26)
         expect(record).to be_nil
       end
     end

@@ -4,7 +4,6 @@ require "time_travel/update_helper"
 class Timeline
   include UpdateHelper
   UPDATE_MODE=ENV["TIME_TRAVEL_UPDATE_MODE"] || TimeTravel.configuration.update_mode
-  INFINITE_DATE=TimeTravel::INFINITE_DATE
 
   def initialize(model_class,**timeline_identifiers)
     @model_class=model_class
@@ -13,7 +12,7 @@ class Timeline
   end
 
   def effective_history
-    @timeline.where(valid_till: INFINITE_DATE).order("effective_from ASC")
+    @timeline.where(valid_till: TimeTravel::INFINITE_DATE).order("effective_from ASC")
   end
 
   def effective_at(effective_date)
@@ -132,7 +131,7 @@ class Timeline
   def self.update_sql(model_class, attribute_set, current_time: Time.current, latest_transactions: false)
     other_attrs = (model_class.column_names - ["id", "created_at", "updated_at", "valid_from", "valid_till"])
     empty_obj_attrs = other_attrs.map{|attr| {attr => nil}}.reduce(:merge!).with_indifferent_access
-    query = ActiveRecord::Base.connection.quote(model_class.unscoped.where(valid_till: INFINITE_DATE).to_sql)
+    query = ActiveRecord::Base.connection.quote(model_class.unscoped.where(valid_till: TimeTravel::INFINITE_DATE).to_sql)
     table_name = ActiveRecord::Base.connection.quote(model_class.table_name)
 
     attribute_set.each_slice(model_class.batch_size).to_a.each do |batched_attribute_set|
@@ -147,9 +146,9 @@ class Timeline
         end
         obj_current_time = attrs[:update_attrs].delete(:current_time) || current_time
         attrs[:effective_from] = db_timestamp(attrs[:update_attrs].delete(:effective_from) || obj_current_time)
-        attrs[:effective_till] = db_timestamp(attrs[:update_attrs].delete(:effective_till) || INFINITE_DATE)
+        attrs[:effective_till] = db_timestamp(attrs[:update_attrs].delete(:effective_till) || TimeTravel::INFINITE_DATE)
         attrs[:current_time] = db_timestamp(obj_current_time)
-        attrs[:infinite_date] = db_timestamp(INFINITE_DATE)
+        attrs[:infinite_date] = db_timestamp(TimeTravel::INFINITE_DATE)
         attrs[:empty_obj_attrs] = empty_obj_attrs.merge(attrs[:timeline_clauses])
       end
       attrs = ActiveRecord::Base.connection.quote(batched_attribute_set.to_json)
@@ -175,7 +174,7 @@ class Timeline
   end
 
   def terminate(current_time: Time.current, effective_till: nil)
-    effective_record = self.effective_history.where(effective_till: INFINITE_DATE).first
+    effective_record = self.effective_history.where(effective_till: TimeTravel::INFINITE_DATE).first
     if effective_record.present?
       attributes = effective_record.attributes.except(*ignored_copy_attributes)
       @model_class.transaction do

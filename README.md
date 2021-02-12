@@ -71,9 +71,9 @@ Now lets try an update to the account, lets say John deposited $200 on Feb 1st, 
     valid_from: Feb 02, 2020
     valid_till: infinity
 
-- Record 1 (Our older record when John opened his account) doesn't hold good anymore since John's balance of 100 is applicable only till the 1st of Feb.
-- Record 2 is the corrected Record 1 where the effective time range is set from 1st Jan, 2020 to 1st Feb 2020.
-- Record 3 reflects the updated balance from Feb 1st onwards.
+Record 1 (Our older record when John opened his account) doesn't hold good anymore since John's balance of 100 is applicable only till the 1st of Feb. \
+Record 2 is the corrected Record 1 where the effective time range is set from 1st Jan, 2020 to 1st Feb 2020. \
+Record 3 reflects the updated balance from Feb 1st onwards.
 
 Finally lets add a correction to see what goes on with the records.
 
@@ -116,9 +116,9 @@ On Feb 5th, a Bank employee notices that John had actually deposited $250 and no
     valid_till: infinity
 
 
-- Record 1 and Record 2 are unaffected because the changes were not applied on the applicable date range of those records.
-- Record 3 is now marked as valid only until Feb 5th
-- Record 4 is the corrected record which contains the new balance applicable from Feb 1st onwards, but valid only from Feb 5th onwards.
+Record 1 and Record 2 are unaffected because the changes were not applied on the applicable date range of those records. \
+Record 3 is now marked as valid only until Feb 5th. \
+Record 4 is the corrected record which contains the new balance applicable from Feb 1st onwards, but valid only from Feb 5th onwards.
 
 So lets say John walks in now, after seeing some of these changes reflecting on his account, he asks:
 

@@ -25,12 +25,14 @@ For example, lets say that John, a carpenter, opens a bank account with a cash b
 
 This is represneted by
 
-owner: "John"
-amount: 100
-effective_from: Jan 01, 2020
-effective_till: infinity
-valid_from: Jan 03, 2020
-valid_till: infinity
+    Record 1
+    --------
+    owner: "John"
+    amount: 100
+    effective_from: Jan 01, 2020
+    effective_till: infinity
+    valid_from: Jan 03, 2020
+    valid_till: infinity
 
 So while the account is opened as of Jan 1, 2020(`effective_from`), the bank formally recorded this information on 3rd(`valid_from`), and so as far as the bank is concerned, it knows that John's account existed from 1st only from the 3rd of Jan!
 
@@ -38,29 +40,32 @@ If John ever walked up to the bank and claimed that he deposited addtional money
 
 Now lets try an update to the account, lets say John deposited $200 on Feb 1st, which the bank recorded on 2nd of Feb, the resulting records would look like this
  
-Record 1
-owner: "John"
-amount: 100
-effective_from: Jan 01, 2020
-effective_till: infinity
-valid_from: Jan 03, 2020
-valid_till: Feb 02, 2020
-
-Record 2
-owner: "John"
-amount: 100
-effective_from: Jan 01, 2020
-effective_till: Feb 01, 2020
-valid_from: Feb 02, 2020
-valid_till: infinity
-
-Record 3
-owner: "John"
-amount: 300
-effective_from: Feb 01, 2020
-effective_till: infinity
-valid_from: Feb 02, 2020
-valid_till: infinity
+    Record 1
+    --------
+    owner: "John"
+    amount: 100
+    effective_from: Jan 01, 2020
+    effective_till: infinity
+    valid_from: Jan 03, 2020
+    valid_till: Feb 02, 2020
+    
+    Record 2
+    --------
+    owner: "John"
+    amount: 100
+    effective_from: Jan 01, 2020
+    effective_till: Feb 01, 2020
+    valid_from: Feb 02, 2020
+    valid_till: infinity
+    
+    Record 3
+    --------
+    owner: "John"
+    amount: 300
+    effective_from: Feb 01, 2020
+    effective_till: infinity
+    valid_from: Feb 02, 2020
+    valid_till: infinity
 
 Record 1 (Our older record when John opened his account) doesn't hold good anymore since John's balance of 100 is applicable only till the 1st of Feb.
 Record 2 is the corrected Record 1 where the effective time range is set from 1st Jan, 2020 to 1st Feb 2020.
@@ -70,37 +75,41 @@ Finally lets add a correction to see what goes on with the records.
 
 On Feb 5th, a Bank employee notices that John had actually deposited $250 and not $200 on Feb 1. Here's what happens to the records
 
-Record 1
-owner: "John"
-amount: 100
-effective_from: Jan 01, 2020
-effective_till: infinity
-valid_from: Jan 03, 2020
-valid_till: Feb 02, 2020
-
-Record 2
-owner: "John"
-amount: 100
-effective_from: Jan 01, 2020
-effective_till: Feb 01, 2020
-valid_from: Feb 02, 2020
-valid_till: infinity
-
-Record 3
-owner: "John"
-amount: 300
-effective_from: Feb 01, 2020
-effective_till: infinity
-valid_from: Feb 02, 2020
-valid_till: Feb 05, 2020
-
-Record 4
-owner: "John"
-amount: 350
-effective_from: Feb 01, 2020
-effective_till: infinity
-valid_from: Feb 05, 2020
-valid_till: infinity
+    Record 1
+    --------
+    owner: "John"
+    amount: 100
+    effective_from: Jan 01, 2020
+    effective_till: infinity
+    valid_from: Jan 03, 2020
+    valid_till: Feb 02, 2020
+    
+    Record 2
+    --------
+    owner: "John"
+    amount: 100
+    effective_from: Jan 01, 2020
+    effective_till: Feb 01, 2020
+    valid_from: Feb 02, 2020
+    valid_till: infinity
+    
+    Record 3
+    --------
+    owner: "John"
+    amount: 300
+    effective_from: Feb 01, 2020
+    effective_till: infinity
+    valid_from: Feb 02, 2020
+    valid_till: Feb 05, 2020
+    
+    Record 4
+    --------
+    owner: "John"
+    amount: 350
+    effective_from: Feb 01, 2020
+    effective_till: infinity
+    valid_from: Feb 05, 2020
+    valid_till: infinity
 
 
 Record 1 and Record 2 are unaffected because the changes were not applied on the applicable date range of those records.

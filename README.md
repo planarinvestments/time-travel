@@ -208,14 +208,19 @@ Updates can be applied in bulk by supplying attributes in an array and using the
 
 The Update history can be accessed using the `effective_history` method of the timeline object
 
-To access corrections applied on a date, call `valid_history(effective_at: Date.prase("05/09/2018).beginning_of_day)`
+To access corrections applied on a date, call the `valid_history` method 
 
 To access all of the history including corrections, call the `full_history` method of the timeline object
 
 Examples follow:
 
     timeline.effective_history
-    timeline.full_history # cash_account_id: 1 with corrections
+    timeline.full_history 
+    timeline.valid_history(effective_at: Date.prase("05/09/2018).beginning_of_day)
+
+### Applying a non-bitemporal update
+
+For fields whose history you don't want to track, you can always use ActiveRecord methods to update records and bypass the bitemporal updates
 
 ### SQL and Native modes
 

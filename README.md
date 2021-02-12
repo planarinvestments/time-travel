@@ -195,8 +195,8 @@ Here are some examples of operations:
     timeline.update({amount: 1500}, effective_from: Date.parse("20/09/2018").beginning_of_day)
     # correct account balance to Rs. 2000 between 5th and 22nd of August
     timeline.update({amount: 2000},
-              effective_from: Date.parse("05/09/2018").beggining_of_day,
-              effective_till: Date.parse("22/09/2018").beggining_of_day)
+              effective_from: Date.parse("05/09/2018").begining_of_day,
+              effective_till: Date.parse("22/09/2018").begining_of_day)
     # close account now
     timeline.terminate()
     # close account, effective from 30th August

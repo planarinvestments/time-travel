@@ -12,6 +12,10 @@ class Timeline
     @timeline=model_class.where(**timeline_identifiers)
   end
 
+  def full_history
+    @timeline.order("effective_from ASC").order("valid_from ASC")
+  end
+
   def effective_history
     @timeline.where(valid_till: TimeTravel::INFINITE_DATE).order("effective_from ASC")
   end

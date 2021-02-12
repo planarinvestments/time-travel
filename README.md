@@ -21,9 +21,13 @@ In Bitemporal data modelling, every record is represented by two time ranges
 - **effective_from, effective_till** - the time range for which the data in the record is applicable. If the data in the record is currently applicable, `effective_till` should be set to the constant `INFINITE_DATE`.
 - **valid_from, valid_till** - the time range for which the data in the record was thought to be accurate. For currently valid information, set `valid_till` to the constant `INFINITE_DATE`.
 
-For example, lets say that John, a carpenter, opens a bank account with a cash balance of $100 on Jan 1, 2020, and the bank formally opened the account on the 3rd.
+While the effective time range tracks updates on the timeline, the valid time range tracks corrections.
 
-This is represneted by
+Lets see how this works with an example.
+
+One day, John, a carpenter, opens a bank account with a cash balance of $100 on Jan 1, 2020, and the bank formally opened the account on the 3rd.
+
+This is represented by
 
     Record 1
     --------

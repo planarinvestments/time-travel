@@ -16,6 +16,13 @@ class Timeline
     @timeline.order("effective_from ASC").order("valid_from ASC")
   end
 
+  def valid_history(effective_at: Time.current)
+    @timeline
+        .where("effective_from <= ?", effective_date)
+        .where("effective_till > ?", effective_date)
+        .order("valid_from ASC")
+  end
+
   def effective_history
     @timeline.where(valid_till: TimeTravel::INFINITE_DATE).order("effective_from ASC")
   end

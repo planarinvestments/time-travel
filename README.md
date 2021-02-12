@@ -169,19 +169,7 @@ Note that this creates date fields for history tracking but does not perform the
 
 #### _Migrating existing data_
 
-To migrate existing data, you'll need to populate the following fields in each record in your model with a custom script of your own.
-
-- **effective_from, effective_till** - the date range for which the data in the record is applicable. If the data in the record is currently applicable, `effective_till` should be set to the constant `INFINITE_DATE`.
-- **valid_from, valid_till** - the date range for which the data in the record was thought to be accurate. For currently valid information, set `valid_till` to the constant `INFINITE_DATE`.
-
-For example,
-
-We came to know on the 25th of Augest, that Tom had a balance of Rs. 1000 from 1st August to 20th August. This is represented by:
-
-**effective_from:** 1st August
-**effective_to:** 20th August
-**valid_from:** 25th August
-**valid_till:** INFINITE_DATE
+To migrate existing data, you'll need to populate the effective and valid time ranges in each record in your model with a custom script of your own.
 
 ### Manipulating data in a Time Travel model
 
@@ -218,9 +206,11 @@ Updates can be applied in bulk by supplying attributes in an array and using the
 
 ### Accessing history of a record
 
-Currently valid history can be accessed using the `effective_history` method of the timeline object
+The Update history can be accessed using the `effective_history` method of the timeline object
 
-To access all of the history including corrections, call the `history` method of the timeline object
+To access corrections applied on a date, call `valid_history(effective_at: Date.prase("05/09/2018).beginning_of_day)`
+
+To access all of the history including corrections, call the `full_history` method of the timeline object
 
 Examples follow:
 

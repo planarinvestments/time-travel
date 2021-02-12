@@ -204,6 +204,14 @@ Here are some examples of operations:
 
 Updates can be applied in bulk by supplying attributes in an array and using the `bulk_update` method
 
+### Accessing a point-in-time record
+
+To access the record which is effective and valid at a particular time, use the `effective_at` method
+
+For example,
+
+    timeline.effective_at(effective_at: Date.prase("05/09/2018).beginning_of_day)
+
 ### Accessing history of a record
 
 The Update history can be accessed using the `effective_history` method of the timeline object

@@ -157,9 +157,9 @@ In the example below. a `CashBalance` model has a `:cash_account_id` field which
       end
     end
 
-#### Adding history tracking to an existing model
+### Adding history tracking to an existing model
 
-##### _Adding fields for history tracking_
+#### _Adding fields for history tracking_
 
 To add history tracking to an existing model, you can use the `time_travel` generator, specifying the name of a model that already exists.
 
@@ -167,7 +167,7 @@ To add history tracking to an existing model, you can use the `time_travel` gene
 
 Note that this creates date fields for history tracking but does not perform the migration of existing data for history tracking. If you need to migrate existing data, you'll need to write scripts for that.
 
-##### _Migrating existing data_
+#### _Migrating existing data_
 
 To migrate existing data, you'll need to populate the following fields in each record in your model with a custom script of your own.
 

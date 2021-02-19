@@ -1,12 +1,15 @@
 do $$
+DECLARE
+  routine_record text;
 BEGIN
   IF EXISTS ( SELECT  1 FROM Information_Schema.Routines WHERE  Routine_Type ='FUNCTION' AND routine_name = 'create_column_value' ) THEN
-    DROP FUNCTION public.create_column_value;
+    SELECT CONCAT(routine_schema, '.', routine_name) INTO routine_record FROM Information_Schema.Routines WHERE  Routine_Type ='FUNCTION' AND routine_name = 'create_column_value' limit 1;
+    EXECUTE concat('DROP FUNCTION ', routine_record);
   END IF;
 END
 $$;
 
-CREATE OR REPLACE FUNCTION public.create_column_value(
+CREATE OR REPLACE FUNCTION create_column_value(
   target json,
   time_current timestamp,
   table_name text,

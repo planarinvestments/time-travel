@@ -235,8 +235,7 @@ Here are some examples of operations:
               effective_till: Date.parse("22/09/2018").begining_of_day)
     # close account now
     timeline.terminate()
-    # close account, effective from 30th August
-    timeline.terminate(effective_from: Date.parse("30/09/2018"))
+    # close account, effective from 30th August timeline.terminate(effective_from: Date.parse("30/09/2018"))
 
 Updates can be applied in bulk by supplying attributes in an array and using the `bulk_update` method
 
@@ -288,7 +287,7 @@ and install the postgres plsql function with
 
     rake time_travel:create_postgres_function
     
-# Behind the Scenes
+## Behind the Scenes
 
 The time travel gem uses bi-temporal modelling to track changes and corrections. There's a lot of material online that covers it in-case you want to dig deeper into what makes the gem work.
 

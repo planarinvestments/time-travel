@@ -12,8 +12,23 @@ class Timeline
     @timeline=model_class.where(**timeline_identifiers)
   end
 
+  def at(date, as_of: Time.current)
+    @timeline
+      .where("effective_from <= ?", date)
+      .where("effective_till > ?", date)
+      .where("valid_from <= ?", as_of)
+      .where("valid_till > ?", as_of)
+  end
+
   def full_history
     @timeline.order("effective_from ASC").order("valid_from ASC")
+  end
+
+  def as_of(valid_date=Time.current)
+    @timeline
+      .where("valid_from <= ?", valid_date)
+      .where("valid_till > ?", valid_date)
+      .order("effective_from ASC")
   end
 
   def valid_history(effective_at: Time.current)

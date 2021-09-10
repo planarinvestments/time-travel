@@ -1,6 +1,165 @@
 # Time Travel
 
-The `time_travel` gem implements a data-modelling concept known as bitemporal data modelling, which makes it easy to record and trace historical changes and corrections to your data. Its similar to versioning tables, but its main difference is that all historical data is tracked in the same table, making it always available and easily accessible.
+The time travel gem adds in-table version control to your data. It lets you see, correct and update records at any point in time, but preserves the entire history of corrections and updates to your data so you can drill-down and find out exactly what happened when something goes wrong.
+
+# How It Works
+
+Lets say that we're a new bank and we're planning to maintain our customers' cash balances in a table called `balance`.
+
+We first add time travel fields to the model with
+```
+> bundle exec rake generate time_travel balance
+> bundle exec rake db:migrate
+```
+include the Time Travel helper in the `balance` model
+
+```
+class Balance < ActiveRecord::Base
+  include TimeTravel::TimelineHelper
+  
+  ...
+```
+and define the `timeline_fields` method to return the fields that uniquely identify each timeline in our model(in our case, the cash account id)
+```
+  ...
+  def self.timeline_fields
+    :cash_account_id
+  end
+```
+
+Then we start off our operations
+
+## Day 1 - 6th Septermber - New Account
+
+The operations team informs us that a new customer created our bank's first account and deposited $500 5 days ago
+
+We record this info with
+
+```
+> timeline=balance.timeline(cash_account_id: 1)
+> timeline.create(amount: 500, effective_from: Time.now - 5.days)
+```
+
+After a few minutes, they ping us again and tells us that the customer also submitted an addition $200 two days ago,
+so we record that as well with
+
+```
+> timeline.update(amount: 700, effective_from: Time.now - 2.days)
+```
+
+# Day 2 - 7th September - Corrections
+
+An operations guy walks in hurriedly and tells us that they are extremely sorry but the amounts deposited were recorded wrong, it was $600 and $300 and not $500 and $200
+
+We cross-check with the team and record the updates
+```
+> timeline.update(amount: 600, effective_from: Time.now - 6 days)
+> timeline.update(amount: 900, effective_from: Time.now - 3.days)
+```
+
+# Day 3 - 8th September - Reconcilliation
+
+On day 3, the customer walks in and tells us that something is wrong with our systems and that the balances were different yesterday and day-before even though he didn't deposit or withdraw any money
+
+So our support team starts with checking the current balance first
+
+To decipher what happened, the team looks at two time ranges in each record. The effective time range(`effective_from` and `effective_till`) tells them what period the data was recorded for, while the valid time range(`valid_from` and `valid_till`) tells them when the data was recorded. An infinite end date(1-1-3000) tells them that the record is currently effective or currently valid depending on which time range it shows up on.
+
+```
+> timeline.at(Time.now)
+{
+  "id"=>6,
+  "cash_account_id"=>1,
+  "amount"=>900,
+  "reference_id"=>nil,
+  "effective_from"=>"2021-09-04T18:30:00.000Z",
+  "effective_till"=>"3000-01-01T00:00:00.000Z",
+  "valid_from"=>"2021-09-07T18:30:00.000Z",
+  "valid_till"=>"3000-01-01T00:00:00.000Z"
+}
+```
+The above record tells them that the customer's balance changed to $900 on the 4th of September and is currently effective, and that the amount was recorded on the 7th and is currently valid.
+
+They check if the customer expects the balance to be $900 and he confirms this
+
+Great, atleast the current balance in order, so they start digging in deeper to check what the balance was 2 days ago
+
+```
+> timeline.at(Time.now - 2.days, as_of: Time.now - 2.days)
+{
+  "id"=>3,
+  "cash_account_id"=>1,
+  "amount"=>700,
+  "reference_id"=>nil,
+  "effective_from"=>"2021-09-04T18:30:00.000Z",
+  "effective_till"=>"3000-01-01T00:00:00.000Z",
+  "valid_from"=>"2021-09-06T18:30:00.000Z",
+  "valid_till"=>"2021-09-07T18:30:00.000Z"
+}
+```
+They realize from this record is that the balance was indeed different two days ago, and it reflected $700. Additionally the valid time range tells them that there was a correction made to the balance a day later since the valid time range ends on the 7th.
+
+They inform the customer that two days ago, he might have seen a balance of $700, and he confirms this.
+
+They then check further and compare balance data recorded two days ago to find out what happened
+
+```
+> timeline.as_of(Time.now - 2.days)
+[
+  {
+    "id"=>2,
+    "cash_account_id"=>1,
+    "amount"=>500,
+    "reference_id"=>nil,
+    "effective_from"=>"2021-09-01T18:30:00.000Z",
+    "effective_till"=>"2021-09-04T18:30:00.000Z",
+    "valid_from"=>"2021-09-06T18:30:00.000Z",
+    "valid_till"=>"2021-09-07T18:30:00.000Z"
+  },
+  {
+    "id"=>3,
+    "cash_account_id"=>1,
+    "amount"=>700,
+    "reference_id"=>nil,
+    "effective_from"=>"2021-09-04T18:30:00.000Z",
+    "effective_till"=>"3000-01-01T00:00:00.000Z",
+    "valid_from"=>"2021-09-06T18:30:00.000Z",
+    "valid_till"=>"2021-09-07T18:30:00.000Z"
+  }
+]
+
+> timeline.as_of(Time.now)
+[
+  {
+    "id"=>5,
+    "cash_account_id"=>1,
+    "amount"=>600,
+    "reference_id"=>nil,
+    "effective_from"=>"2021-09-01T18:30:00.000Z",
+    "effective_till"=>"2021-09-04T18:30:00.000Z",
+    "valid_from"=>"2021-09-07T18:30:00.000Z",
+    "valid_till"=>"3000-01-01T00:00:00.000Z"
+  },
+  {
+    "id"=>6,
+    "cash_account_id"=>1,
+    "amount"=>900,
+    "reference_id"=>nil,
+    "effective_from"=>"2021-09-04T18:30:00.000Z",
+    "effective_till"=>"3000-01-01T00:00:00.000Z",
+    "valid_from"=>"2021-09-07T18:30:00.000Z",
+    "valid_till"=>"3000-01-01T00:00:00.000Z"
+  }
+]
+```
+
+From the time ranges, they understand that the balance dates were correct and not altered, but the amounts were corrected a day after the amounts were initially recorded.
+
+They inform the customer about exactly what happened with his accounts in the last two days.
+
+The customer, wanting to ensure that everything is right, asks them when the additional $300 was recorded. and they inform the customer that the date of the second deposit is 4 days go, but the correct amount was updated yesterday.
+
+The customer feels satisfied that all the changes were tracked accurately, thanks us and leaves
 
 ## Installation
 
@@ -14,130 +173,7 @@ Then run:
 
     bundle install
 
-## How it works
-
-In Bitemporal data modelling, every record is represented by two time ranges
-
-- **effective_from, effective_till** - the time range for which the data in the record is applicable. If the data in the record is currently applicable, `effective_till` should be set to the constant `INFINITE_DATE`.
-- **valid_from, valid_till** - the time range for which the data in the record was thought to be accurate. For currently valid information, set `valid_till` to the constant `INFINITE_DATE`.
-
-While the effective time range tracks updates on the timeline, the valid time range tracks corrections.
-
-Lets see how this works with an example.
-
-One day, John, a carpenter, opens a bank account with a cash balance of $100 on Jan 1, 2020, and the bank formally opened the account on the 3rd.
-
-This is represented by
-
-    Record 1
-    --------
-    owner: "John"
-    amount: 100
-    effective_from: Jan 01, 2020
-    effective_till: infinity
-    valid_from: Jan 03, 2020
-    valid_till: infinity
-
-So while the account is opened as of Jan 1, 2020(`effective_from`), the bank formally recorded this information on 3rd(`valid_from`), and so as far as the bank is concerned, it knows that John's account existed from 1st only from the 3rd of Jan!
-
-If John ever walked up to the bank and claimed that he deposited addtional money on the 2nd, the bank would be quick to point out that they had not formally opened the account till the 3rd of Jan.
-
-Now lets try an update to the account, lets say John deposited $200 on Feb 1st, which the bank recorded on 2nd of Feb, the resulting records would look like this
- 
-    Record 1
-    --------
-    owner: "John"
-    amount: 100
-    effective_from: Jan 01, 2020
-    effective_till: infinity
-    valid_from: Jan 03, 2020
-    valid_till: Feb 02, 2020
-    
-    Record 2
-    --------
-    owner: "John"
-    amount: 100
-    effective_from: Jan 01, 2020
-    effective_till: Feb 01, 2020
-    valid_from: Feb 02, 2020
-    valid_till: infinity
-    
-    Record 3
-    --------
-    owner: "John"
-    amount: 300
-    effective_from: Feb 01, 2020
-    effective_till: infinity
-    valid_from: Feb 02, 2020
-    valid_till: infinity
-
-Record 1 (Our older record when John opened his account) doesn't hold good anymore since John's balance of 100 is applicable only till the 1st of Feb. \
-Record 2 is the corrected Record 1 where the effective time range is set from 1st Jan, 2020 to 1st Feb 2020. \
-Record 3 reflects the updated balance from Feb 1st onwards.
-
-Finally lets add a correction to see what goes on with the records.
-
-On Feb 5th, a Bank employee notices that John had actually deposited $250 and not $200 on Feb 1. Here's what happens to the records
-
-    Record 1
-    --------
-    owner: "John"
-    amount: 100
-    effective_from: Jan 01, 2020
-    effective_till: infinity
-    valid_from: Jan 03, 2020
-    valid_till: Feb 02, 2020
-    
-    Record 2
-    --------
-    owner: "John"
-    amount: 100
-    effective_from: Jan 01, 2020
-    effective_till: Feb 01, 2020
-    valid_from: Feb 02, 2020
-    valid_till: infinity
-    
-    Record 3
-    --------
-    owner: "John"
-    amount: 300
-    effective_from: Feb 01, 2020
-    effective_till: infinity
-    valid_from: Feb 02, 2020
-    valid_till: Feb 05, 2020
-    
-    Record 4
-    --------
-    owner: "John"
-    amount: 350
-    effective_from: Feb 01, 2020
-    effective_till: infinity
-    valid_from: Feb 05, 2020
-    valid_till: infinity
-
-
-Record 1 and Record 2 are unaffected because the changes were not applied on the applicable date range of those records. \
-Record 3 is now marked as valid only until Feb 5th. \
-Record 4 is the corrected record which contains the new balance applicable from Feb 1st onwards, but valid only from Feb 5th onwards.
-
-So lets say John walks in now, after seeing some of these changes reflecting on his account, he asks:
-
-I don't know why but my balance suddenly went up by $50, can you explain why?
-
-To which the bank promptly responds that
-
-1. On Feb 2nd, we erroneously recorded your balance as $300, assuming a deposit of $200 for Feb 1st
-2. On Feb 5th, we noticed that you had deposited $250 and not $200, and corrected it
-
-All of this data can be pulled out by simply taking a look at the records and analyzing the effective and valid date ranges, making bitemporal updates a very robust mechanism to track changes and corrections.
-
-## How to Use it
-
-### Generators and its usage
-
-Run the following generator to create sql functions used by gem to manage history
-
-    bundle exec rails generate time_travel_sql create
+## Usage
 
 ### Creating a new model that tracks history
 
@@ -149,7 +185,7 @@ Then, include `TimeTravel::TimelineHelper` in your ActiveRecord Model, and defin
 
 In the example below. a `CashBalance` model has a `:cash_account_id` field which uniquely identifies the account for which the cash balance needs to be tracked.
 
-    class CashTransaction < ActiveRecord::Base
+    class CashBalance < ActiveRecord::Base
       include TimeTravel::TimelineHelper
 
       def self.timeline_fields
@@ -165,11 +201,9 @@ To add history tracking to an existing model, you can use the `time_travel` gene
 
     bundle exec rake generate time_travel <ExistingModel>
 
-Note that this creates date fields for history tracking but does not perform the migration of existing data for history tracking. If you need to migrate existing data, you'll need to write scripts for that.
-
 #### _Migrating existing data_
 
-To migrate existing data, you'll need to populate the effective and valid time ranges in each record in your model with a custom script of your own.
+To migrate existing data, you'll need to populate the effective and valid time ranges in each record in your model with a custom script of your own. An easy way to do this for a table that has a single date field is to order the records by the field and chain the dates from subsequent records to create the effective time range. The valid time range can be set to the current date onwards if you don't care about history prior to the migration.
 
 ### Manipulating data in a Time Travel model
 
@@ -177,11 +211,13 @@ To apply changes to a timeline, first create a timeline object
 
     timeline=balance.timeline(cash_account_id: 1)
 
-Then use the `create`, `update` or `terminate` methods to modify the timeline
+Then use the `create`, `update` or `terminate` methods to modify the timeline.
 
-Note that you cannot pass in `valid_from` and `valid_till` fields because those are set by the gem, based on when records are corrected.
+In case you're not sure if you need to create a new timeline or update it, you can always call `create_or_update` to do the dirty work for you.
 
-However, you can pass in `effective_from` and `effective_till` dates to indicate the period during which you want to create or update records.
+You can pass in `effective_from` and `effective_till` dates to indicate the period during which you want to create or update records. This is especially useful if you want to correct an older record.
+
+The `valid_from` and `valid_till` fields are managed by the gem, based on when records are added or corrected and cannot be modified explicitly on the timeline.
 
 Here are some examples of operations:
 
@@ -204,31 +240,37 @@ Here are some examples of operations:
 
 Updates can be applied in bulk by supplying attributes in an array and using the `bulk_update` method
 
-### Accessing a point-in-time record
+### Accessing the timelines
 
-To access the record which is effective and valid at a particular time, use the `effective_at` method
+To access the records in the timelines, use the `at` and `as_of` methods.
 
-For example,
+The `at` method returns a single record at a point in the timelines. 
 
-    timeline.effective_at(effective_at: Date.prase("05/09/2018).beginning_of_day)
+```
+# retrieve a currently valid record, effective 2 days ago
+timeline.at(Time.now - 2 days)
+# retrieve record which was valid and effective 2 days ago
+timeline.at(Time.now - 2.days, as_of: Time.now - 2 days) 
+```
 
-### Accessing history of a record
+The `as_of` method returns the entire history of records which were valid on a given date
 
-The Update history can be accessed using the `effective_history` method of the timeline object
+```
+# the currently valid set of records
+timeline.as_of(Time.now)
+# the set of records valid two days ago
+timeline.as_of(Time.now - 2.days)
+```
 
-To access corrections applied on a date, call the `valid_history` method 
+### Updating data directly
 
-To access all of the history including corrections, call the `full_history` method of the timeline object
+Data on any record can be directly updated by using ActiveRecord methods on your model. 
 
-Examples follow:
+You might want to do this for fields which you don't want to track on the timelines.
 
-    timeline.effective_history
-    timeline.full_history 
-    timeline.valid_history(effective_at: Date.prase("05/09/2018).beginning_of_day)
+Avoid updating the time ranges directly though, unless you really know what you're doing.
 
-### Applying a non-bitemporal update
-
-For fields whose history you don't want to track, you can always use ActiveRecord methods to update records and bypass the bitemporal updates
+We allow updates to the time ranges since you might need to migrate an existing model to add `time_travel` functionality.
 
 ### SQL and Native modes
 
@@ -245,3 +287,8 @@ To switch modes, create an initializer as follows
 and install the postgres plsql function with
 
     rake time_travel:create_postgres_function
+    
+# Behind the Scenes
+
+The time travel gem uses bi-temporal modelling to track changes and corrections. There's a lot of material online that covers it in-case you want to dig deeper into what makes the gem work.
+

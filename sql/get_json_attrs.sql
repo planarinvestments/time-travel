@@ -1,12 +1,15 @@
 do $$
+DECLARE
+  routine_record text;
 BEGIN
   IF EXISTS ( SELECT  1 FROM Information_Schema.Routines WHERE  Routine_Type ='FUNCTION' AND routine_name = 'get_json_attrs' ) THEN
-    DROP FUNCTION public.get_json_attrs;
+    SELECT CONCAT(routine_schema, '.', routine_name) INTO routine_record FROM Information_Schema.Routines WHERE  Routine_Type ='FUNCTION' AND routine_name = 'get_json_attrs' limit 1;
+    EXECUTE concat('DROP FUNCTION ', routine_record);
   END IF;
 END
 $$;
 
-CREATE OR REPLACE FUNCTION public.get_json_attrs(
+CREATE OR REPLACE FUNCTION get_json_attrs(
   target jsonb,
   update_attributes jsonb)
     RETURNS json

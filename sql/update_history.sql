@@ -1,12 +1,15 @@
 do $$
+DECLARE
+  routine_record text;
 BEGIN
   IF EXISTS ( SELECT  1 FROM Information_Schema.Routines WHERE  Routine_Type ='FUNCTION' AND routine_name = 'update_history') THEN
-    DROP FUNCTION public.update_history;
+    SELECT CONCAT(routine_schema, '.', routine_name) INTO routine_record FROM Information_Schema.Routines WHERE  Routine_Type ='FUNCTION' AND routine_name = 'update_history' limit 1;
+    EXECUTE concat('DROP FUNCTION ', routine_record);
   END IF;
 END
 $$;
 
-CREATE OR REPLACE FUNCTION public.update_history(
+CREATE OR REPLACE FUNCTION update_history(
   query text,
   table_name text,
   update_attrs text,

@@ -47,7 +47,7 @@ so we record that as well with
 > timeline.update(amount: 700, effective_from: Time.now - 2.days)
 ```
 
-# Day 2 - 7th September - Corrections
+## Day 2 - 7th September - Corrections
 
 An operations guy walks in hurriedly and tells us that they are extremely sorry but the amounts deposited were recorded wrong, it was $600 and $300 and not $500 and $200
 
@@ -57,7 +57,7 @@ We cross-check with the team and record the updates
 > timeline.update(amount: 900, effective_from: Time.now - 3.days)
 ```
 
-# Day 3 - 8th September - Reconcilliation
+## Day 3 - 8th September - Reconcilliation
 
 On day 3, the customer walks in and tells us that something is wrong with our systems and that the balances were different yesterday and day-before even though he didn't deposit or withdraw any money
 

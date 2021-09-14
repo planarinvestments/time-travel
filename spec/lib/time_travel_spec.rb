@@ -43,7 +43,7 @@ describe TimeTravel do
         timeline=entry_klass.timeline(wrapper_id: wrapper_id, req_id: req_id, req_type: req_type)
         attrs= { amount: amount }
         timeline.create_or_update(attrs, effective_from: effective_from, effective_till: TimeTravel::INFINITE_DATE)
-        table=timeline.effective_at(effective_from)
+        table=timeline.at(effective_from)
         expect(table).to be_persisted
         expect(table.req_type).to eql(req_type)
         expect(table.req_id).to eql(req_id)
@@ -56,7 +56,7 @@ describe TimeTravel do
         timeline=entry_klass.timeline(wrapper_id: wrapper_id, req_id: req_id, req_type: req_type)
         attrs = { amount: amount }
         timeline.create_or_update(attrs)
-        table=timeline.effective_at(Time.current)
+        table=timeline.at(Time.current)
         expect(table).to be_persisted
         expect(table.amount).to eql(amount)
         expect(table.req_id).to eql(req_id)
@@ -76,9 +76,9 @@ describe TimeTravel do
         attrs= { amount: amount }
         timeline.create_or_update(attrs, effective_from: effective_from, effective_till: TimeTravel::INFINITE_DATE)
         timeline.terminate(effective_till: current_time)
-        entry_history = timeline.effective_at(current_time)
+        entry_history = timeline.at(current_time)
         expect(entry_history).to eql(nil)
-        entry_history = timeline.effective_at(current_time - 1.hour)
+        entry_history = timeline.at(current_time - 1.hour)
         expect(entry_history.amount).to eq(amount)
         expect(entry_history.wrapper_id).to eq(wrapper_id)
         expect(entry_history.req_id).to eq(req_id)
@@ -130,7 +130,7 @@ describe TimeTravel do
       timeline=balance_klass.timeline(cash_account_id: cash_account_id)
       attrs = { amount: amount }
       timeline.create(attrs, effective_from: effective_from, effective_till: effective_till)
-      balance=timeline.effective_at(effective_from)
+      balance=timeline.at(effective_from)
       expect(balance).to be_persisted
       expect(balance.amount).to eql(amount)
       expect(balance.cash_account_id).to eql(cash_account_id)
@@ -143,7 +143,7 @@ describe TimeTravel do
       timeline=balance_klass.timeline(cash_account_id: cash_account_id)
       attrs = { amount: amount }
       timeline.create(attrs)
-      balance=timeline.effective_at(Time.current)
+      balance=timeline.at(Time.current)
       expect(balance).to be_persisted
       expect(balance.amount).to eql(amount)
       expect(balance.cash_account_id).to eql(cash_account_id)

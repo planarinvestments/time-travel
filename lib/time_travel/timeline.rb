@@ -13,11 +13,13 @@ class Timeline
   end
 
   def at(date, as_of: Time.current)
-    @timeline
+    record=@timeline
       .where("effective_from <= ?", date)
       .where("effective_till > ?", date)
       .where("valid_from <= ?", as_of)
       .where("valid_till > ?", as_of)
+    record.first if record.exists?
+
   end
 
   def full_history
@@ -40,13 +42,6 @@ class Timeline
 
   def effective_history
     @timeline.where(valid_till: TimeTravel::INFINITE_DATE).order("effective_from ASC")
-  end
-
-  def effective_at(effective_date)
-    effective_record = effective_history
-        .where("effective_from <= ?", effective_date)
-        .where("effective_till > ?", effective_date)
-    effective_record.first if effective_record.exists?
   end
 
   def construct_record(attributes,current_time:,effective_from:,effective_till:)

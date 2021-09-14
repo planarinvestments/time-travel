@@ -63,12 +63,12 @@ describe TimeTravel do
     end
     context " validations " do
       it "returns record when valid identifier being passed " do
-        record = timeline.effective_at(sep_19)
+        record = timeline.at(sep_19)
         expect(record).to be_present
       end
 
       it "returns null when identifier being passed does not have history " do
-        record = timeline3.effective_at(sep_19)
+        record = timeline3.at(sep_19)
         expect(record).to be_nil
       end
 
@@ -90,7 +90,7 @@ describe TimeTravel do
 
     context " when searched for record data within the history " do
       it " with date inbetween definite effective record" do
-        record = timeline.effective_at(sep_19)
+        record = timeline.at(sep_19)
         expect(record.cash_account_id).to eql(cash_account_id)
         expect(record.effective_from).to eql(sep_10)
         expect(record.effective_till).to eql(sep_20)
@@ -100,7 +100,7 @@ describe TimeTravel do
       end
 
       it "with date equal to inbound effective range" do
-        record = timeline.effective_at(sep_10)
+        record = timeline.at(sep_10)
 
         expect(record.cash_account_id).to eql(cash_account_id)
         expect(record.effective_from).to eql(sep_10)
@@ -111,7 +111,7 @@ describe TimeTravel do
       end
 
       it "with date equal to outbound effective range" do
-        record = timeline.effective_at(sep_19.end_of_day)
+        record = timeline.at(sep_19.end_of_day)
 
         expect(record.cash_account_id).to eql(cash_account_id)
         expect(record.effective_from).to eql(sep_10)
@@ -122,7 +122,7 @@ describe TimeTravel do
       end
 
       it " with date is in future of an infinite effective record" do
-        record = timeline.effective_at(sep_28)
+        record = timeline.at(sep_28)
 
         expect(record.cash_account_id).to eql(cash_account_id)
         expect(record.effective_from).to eql(sep_25)
@@ -135,12 +135,12 @@ describe TimeTravel do
 
     context " when searched for record data outside the history " do
       it " with date lesser than definite effective record" do
-        record = timeline.effective_at(sep_2)
+        record = timeline.at(sep_2)
         expect(record).to be_nil
       end
 
       it " with date time gap of definite effective records" do
-        record = terminated_timeline.effective_at(sep_26)
+        record = terminated_timeline.at(sep_26)
         expect(record).to be_nil
       end
     end

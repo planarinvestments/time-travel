@@ -47,7 +47,7 @@ describe TimeTravel do
       new_effective_from = effective_from + 2.days
       timeline.create({amount: amount, status: 'stale'}, effective_from: effective_from)
       timeline.update({status: 'fresh', amount: 200}, effective_from: new_effective_from)
-      new_obj=timeline.effective_at(new_effective_from)
+      new_obj=timeline.at(new_effective_from)
 
       expect(new_obj).to be_persisted
       expect(new_obj.wrapper_id).to eql(wrapper_id)
@@ -58,7 +58,7 @@ describe TimeTravel do
       expect(new_obj).to be_effective_now
       expect(new_obj).to be_valid_now
 
-      old_obj = timeline.effective_at(effective_from)
+      old_obj = timeline.at(effective_from)
       expect(old_obj.effective_from.to_datetime).to eql(effective_from)
       expect(old_obj.effective_till.to_datetime).to eql(new_effective_from)
       expect(old_obj).to be_stale

@@ -46,12 +46,12 @@ describe TimeTravel do
   let!(:balance) { 
     attrs={ amount: amount }
     timeline.create(attrs, effective_from: sep_20)
-    timeline.effective_at(sep_20)
+    timeline.at(sep_20)
   }
   let!(:terminated_balance) { 
     attrs={ amount: amount }
     terminated_timeline.create(attrs, effective_from: sep_20, effective_till: sep_25)
-    terminated_timeline.effective_at(sep_20)
+    terminated_timeline.at(sep_20)
   }
 
   describe "validations" do

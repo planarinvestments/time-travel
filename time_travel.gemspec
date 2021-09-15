@@ -5,11 +5,11 @@ require "time_travel/version"
 
 # Describe your gem and declare its dependencies:
 Gem::Specification.new do |s|
-  s.name        = "time_travel"
+  s.name        = "time-travel"
   s.version     = TimeTravel::VERSION
   s.authors     = [""]
   s.email       = [""]
-  s.homepage    = "http://weinvest.net"
+  s.homepage    = "https://weinvest.net"
   s.summary     = "The Time travel gem adds history and correction tracking to models."
   s.description = "The time travel gem adds history and correction tracking to models."
 

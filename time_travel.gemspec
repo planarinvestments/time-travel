@@ -9,9 +9,9 @@ Gem::Specification.new do |s|
   s.version     = TimeTravel::VERSION
   s.authors     = [""]
   s.email       = [""]
-  s.homepage    = "https://weinvest.net"
-  s.summary     = "The Time travel gem adds history and correction tracking to models."
-  s.description = "The time travel gem adds history and correction tracking to models."
+  s.homepage    = "https://github.com/planarinvestments/time-travel"
+  s.summary     = "The Time travel gem adds in-table version control to models."
+  s.description = "The time travel gem adds in-table version control to models."
 
   s.license     = "MIT"
 

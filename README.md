@@ -163,11 +163,9 @@ The customer feels satisfied that all the changes were tracked accurately, thank
 
 ## Installation
 
-To install the gem, reference this git repository in your `Gemfile`
+Install the gem with
 
-    git "https://<your-personal-access-token>:x-oauth-basic@github.com/planarinv/elder-wand.git" do
-      gem 'time_travel'
-    end
+      gem 'time-travel'
 
 Then run:
 
@@ -269,11 +267,11 @@ You might want to do this for fields which you don't want to track on the timeli
 
 Avoid updating the time ranges directly though, unless you really know what you're doing.
 
-We allow updates to the time ranges since you might need to migrate an existing model to add `time_travel` functionality.
+We allow updates to the time ranges since you might need to migrate an existing model to support `time_travel` functionality.
 
 ### SQL and Native modes
 
-By default time_travel applies updates using native ruby logic.
+By default time travel applies updates using native ruby logic.
 
 For performance, the sql mode is also available with support for Postgres.
 

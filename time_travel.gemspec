@@ -7,8 +7,8 @@ require "time_travel/version"
 Gem::Specification.new do |s|
   s.name        = "time-travel"
   s.version     = TimeTravel::VERSION
-  s.authors     = [""]
-  s.email       = [""]
+  s.authors     = ["Mahadevan K, Ramkumar K, Vayu Teja Amarnath Navuluri"]
+  s.email       = ["mahadevan@weinvest.net"]
   s.homepage    = "https://github.com/planarinvestments/time-travel"
   s.summary     = "The Time travel gem adds in-table version control to models."
   s.description = "The time travel gem adds in-table version control to models."

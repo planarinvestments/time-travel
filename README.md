@@ -40,10 +40,11 @@ We record this info with
 > timeline.create(amount: 500, effective_from: Time.now - 5.days)
 ```
 
-After a few minutes, they ping us again and tells us that the customer also submitted an addition $200 two days ago,
+After a few minutes, they ping us again and tells us that the customer also submitted an additional $200 two days ago,
 so we record that as well with
 
 ```
+# the new balance is 500+200, which is $700
 > timeline.update(amount: 700, effective_from: Time.now - 2.days)
 ```
 
@@ -157,7 +158,7 @@ From the time ranges, they understand that the balance dates were correct and no
 
 They inform the customer about exactly what happened with his accounts in the last two days.
 
-The customer, wanting to ensure that everything is right, asks them when the additional $300 was recorded. and they inform the customer that the date of the second deposit is 4 days go, but the correct amount was updated yesterday.
+The customer, wanting to ensure that everything is right, asks them when the additional $300 was recorded. and they inform the customer that the date of the second deposit is 4 days ago, but the correct amount was updated yesterday.
 
 The customer feels satisfied that all the changes were tracked accurately, thanks us and leaves
 
